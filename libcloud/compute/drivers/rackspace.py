@@ -16,7 +16,6 @@
 Rackspace driver
 """
 from libcloud.compute.types import Provider
-from libcloud.compute.base import NodeLocation
 from libcloud.compute.drivers.openstack import OpenStackConnection, OpenStackNodeDriver, OpenStackResponse
 
 from libcloud.common.rackspace import (
@@ -37,14 +36,9 @@ class RackspaceNodeDriver(OpenStackNodeDriver):
     connectionCls = RackspaceConnection
     type = Provider.RACKSPACE
     api_name = 'rackspace'
-
-    def list_locations(self):
-        """Lists available locations
-
-        Locations cannot be set or retrieved via the API, but currently
-        there are two locations, DFW and ORD.
-        """
-        return [NodeLocation(0, "Rackspace DFW1/ORD1", 'US', self)]
+    locations = (
+        (0, 'Rackspace DFW1/ORD1', 'US'),
+    )
 
 
 class RackspaceUKConnection(RackspaceConnection):
@@ -60,6 +54,6 @@ class RackspaceUKNodeDriver(RackspaceNodeDriver):
 
     name = 'Rackspace (UK)'
     connectionCls = RackspaceUKConnection
-
-    def list_locations(self):
-        return [NodeLocation(0, 'Rackspace UK London', 'UK', self)]
+    locations = (
+        (0, 'Rackspace UK London', 'UK'),
+    )

@@ -27,7 +27,7 @@ from libcloud.common.types import InvalidCredsError
 from libcloud.compute.providers import Provider
 from libcloud.compute.types import NodeState
 from libcloud.compute.base import Node, NodeDriver
-from libcloud.compute.base import NodeSize, NodeImage, NodeLocation
+from libcloud.compute.base import NodeSize, NodeImage
 
 API_HOST = 'api.vps.net'
 API_VERSION = 'api10json'
@@ -82,6 +82,9 @@ class VPSNetNodeDriver(NodeDriver):
     api_name = 'vps_net'
     name = "vps.net"
     connectionCls = VPSNetConnection
+    locations = (
+        (0, 'VPS.net Western US', 'US'),
+    )
 
     def _to_node(self, vm):
         if vm['running']:
@@ -179,6 +182,3 @@ class VPSNetNodeDriver(NodeDriver):
                            for image in templates])
 
         return images
-
-    def list_locations(self):
-        return [NodeLocation(0, "VPS.net Western US", 'US', self)]

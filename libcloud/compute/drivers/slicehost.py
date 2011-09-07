@@ -24,7 +24,7 @@ from xml.parsers.expat import ExpatError
 from libcloud.common.base import ConnectionKey, Response
 from libcloud.compute.types import (
     NodeState, Provider, InvalidCredsError, MalformedResponseError)
-from libcloud.compute.base import NodeSize, NodeDriver, NodeImage, NodeLocation
+from libcloud.compute.base import NodeSize, NodeDriver, NodeImage
 from libcloud.compute.base import Node, is_private_subnet
 
 class SlicehostResponse(Response):
@@ -86,6 +86,11 @@ class SlicehostNodeDriver(NodeDriver):
 
     type = Provider.SLICEHOST
     name = 'Slicehost'
+    locations = (
+        (0, 'Slicehost St. Louis (STL-A)', 'US'),
+        (1, 'Slicehost St. Louis (STL-B)', 'US'),
+        (2, 'Slicehost Dallas-Fort Worth (DFW-1)', 'US'),
+    )
 
     features = {"create_node": ["generates_password"]}
 
@@ -103,13 +108,6 @@ class SlicehostNodeDriver(NodeDriver):
 
     def list_images(self, location=None):
         return self._to_images(self.connection.request('/images.xml').object)
-
-    def list_locations(self):
-        return [
-            NodeLocation(0, 'Slicehost St. Louis (STL-A)', 'US', self),
-            NodeLocation(0, 'Slicehost St. Louis (STL-B)', 'US', self),
-            NodeLocation(0, 'Slicehost Dallas-Fort Worth (DFW-1)', 'US', self)
-        ]
 
     def create_node(self, **kwargs):
         name = kwargs['name']

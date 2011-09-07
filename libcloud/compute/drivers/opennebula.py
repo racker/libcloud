@@ -27,7 +27,7 @@ from libcloud.common.base import ConnectionUserAndKey, Response
 from libcloud.common.types import InvalidCredsError
 from libcloud.compute.providers import Provider
 from libcloud.compute.types import NodeState
-from libcloud.compute.base import NodeDriver, Node, NodeLocation
+from libcloud.compute.base import NodeDriver, Node
 from libcloud.compute.base import NodeImage, NodeSize
 
 API_HOST = ''
@@ -76,6 +76,9 @@ class OpenNebulaNodeDriver(NodeDriver):
     connectionCls = OpenNebulaConnection
     type = Provider.OPENNEBULA
     name = 'OpenNebula'
+    locations = (
+        (0, 'OpenNebula', 'ONE'),
+    )
 
     NODE_STATE_MAP = {
         'PENDING': NodeState.PENDING,
@@ -114,9 +117,6 @@ class OpenNebulaNodeDriver(NodeDriver):
 
     def list_images(self, location=None):
         return self._to_images(self.connection.request('/storage').object)
-
-    def list_locations(self):
-        return [NodeLocation(0,  'OpenNebula', 'ONE', self)]
 
     def reboot_node(self, node):
         compute_id = str(node.id)

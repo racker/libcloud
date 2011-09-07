@@ -30,7 +30,7 @@ except:
     import simplejson as json
 
 from libcloud.common.base import Response, ConnectionUserAndKey
-from libcloud.compute.base import NodeDriver, NodeSize, NodeLocation
+from libcloud.compute.base import NodeDriver, NodeSize
 from libcloud.compute.base import NodeImage, Node
 from libcloud.compute.types import Provider, NodeState, InvalidCredsError
 from libcloud.compute.base import is_private_subnet
@@ -303,17 +303,6 @@ class ECPNodeDriver(NodeDriver):
                 ))
 
         return sizes
-
-    def list_locations(self):
-        """
-        This feature does not exist in ECP. Returns hard coded dummy location.
-        """
-        return [
-          NodeLocation(id=1,
-                       name="Cloud",
-                       country='',
-                       driver=self),
-        ]
 
     def create_node(self, **kwargs):
         """

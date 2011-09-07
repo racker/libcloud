@@ -210,11 +210,6 @@ class DreamhostNodeDriver(NodeDriver):
 
         return sizes
 
-    def list_locations(self, **kwargs):
-        raise NotImplementedError(
-            'You cannot select a location for '
-            'DreamHost Private Servers at this time.')
-
     ############################################
     # Private Methods (helpers and extensions) #
     ############################################

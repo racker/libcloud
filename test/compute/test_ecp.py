@@ -26,6 +26,7 @@ from test.file_fixtures import ComputeFileFixtures
 from test.secrets import ECP_USER_NAME, ECP_PASSWORD
 
 class ECPTests(unittest.TestCase, TestCaseMixin):
+    should_list_locations = False
 
     def setUp(self):
         ECPNodeDriver.connectionCls.conn_classes = (None,

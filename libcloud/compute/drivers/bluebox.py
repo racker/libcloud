@@ -35,7 +35,7 @@ from libcloud.common.base import Response, ConnectionUserAndKey
 from libcloud.compute.providers import Provider
 from libcloud.compute.types import NodeState, InvalidCredsError
 from libcloud.compute.base import Node, NodeDriver
-from libcloud.compute.base import NodeSize, NodeImage, NodeLocation
+from libcloud.compute.base import NodeSize, NodeImage
 from libcloud.compute.base import NodeAuthPassword, NodeAuthSSHKey
 
 # Current end point for Blue Box API.
@@ -136,6 +136,9 @@ class BlueboxNodeDriver(NodeDriver):
     type = Provider.BLUEBOX
     api_name = 'bluebox'
     name = 'Bluebox Blocks'
+    locations = (
+        (0, "Blue Box Seattle US", 'US'),
+    )
 
     def list_nodes(self):
         result = self.connection.request('/api/blocks.json')
@@ -207,9 +210,6 @@ class BlueboxNodeDriver(NodeDriver):
         result = self.connection.request(url, method='DELETE')
 
         return result.status == 200
-
-    def list_locations(self):
-        return [NodeLocation(0, "Blue Box Seattle US", 'US', self)]
 
     def reboot_node(self, node):
         url = '/api/blocks/%s/reboot.json' % (node.id)

@@ -23,7 +23,7 @@ except:
 from libcloud.common.base import ConnectionKey, Response
 from libcloud.common.types import InvalidCredsError
 from libcloud.compute.types import Provider, NodeState
-from libcloud.compute.base import NodeDriver, NodeSize, Node, NodeLocation
+from libcloud.compute.base import NodeDriver, NodeSize, Node
 from libcloud.compute.base import NodeImage, NodeAuthPassword
 
 API_CONTEXT = '/r'
@@ -112,6 +112,13 @@ class RimuHostingNodeDriver(NodeDriver):
     type = Provider.RIMUHOSTING
     name = 'RimuHosting'
     connectionCls = RimuHostingConnection
+    locations = (
+        ('DCAUCKLAND', "RimuHosting Auckland", 'NZ'),
+        ('DCDALLAS', "RimuHosting Dallas", 'US'),
+        ('DCLONDON', "RimuHosting London", 'GB'),
+        ('DCSYDNEY', "RimuHosting Sydney", 'AU'),
+    )
+    features = {"create_node": ["password"]}
 
     def __init__(self, key, host=API_HOST, port=API_PORT,
                  api_context=API_CONTEXT, secure=API_SECURE):
@@ -301,13 +308,3 @@ class RimuHostingNodeDriver(NodeDriver):
         node = self._to_node(res['about_order'])
         node.extra['password'] = res['new_order_request']['instantiation_options']['password']
         return node
-
-    def list_locations(self):
-        return [
-            NodeLocation('DCAUCKLAND', "RimuHosting Auckland", 'NZ', self),
-            NodeLocation('DCDALLAS', "RimuHosting Dallas", 'US', self),
-            NodeLocation('DCLONDON', "RimuHosting London", 'GB', self),
-            NodeLocation('DCSYDNEY', "RimuHosting Sydney", 'AU', self),
-        ]
-
-    features = {"create_node": ["password"]}

@@ -334,6 +334,7 @@ class NodeDriver(object):
     name = None
     type = None
     port = None
+    locations = ()
     features = {"create_node": []}
     """
     List of available features for a driver.
@@ -460,9 +461,20 @@ class NodeDriver(object):
         """
         List data centers for a provider
         @return: C{list} of L{NodeLocation} objects
+
+        Because many APIs don't have the concept of locations, we'll provide
+        a mechanism to simulate them by specifying values in the driver.
+        
+        DriverClass.locations = an iterable of (name, country) tuples.
         """
-        raise NotImplementedError(
-            'list_locations not implemented for this driver')
+        if not self.locations:
+            raise NotImplementedError('list_locations not implemented for this driver')
+
+        return [
+            NodeLocation(id, name, country, self)
+            for id, name, country in self.locations
+        ]
+
 
     def deploy_node(self, **kwargs):
         """

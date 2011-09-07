@@ -1006,6 +1006,7 @@ class EucNodeDriver(EC2NodeDriver):
     name = 'Eucalyptus'
     connectionCls = EucConnection
     _instance_types = EC2_US_WEST_INSTANCE_TYPES
+    locations = ()
 
     def __init__(self, key, secret=None, secure=True, host=None,
                  path=None, port=None):
@@ -1013,10 +1014,6 @@ class EucNodeDriver(EC2NodeDriver):
         if path is None:
             path = "/services/Eucalyptus"
         self.path = path
-
-    def list_locations(self):
-        raise NotImplementedError(
-                'list_locations not implemented for this driver')
 
     def _add_instance_filter(self, params, node):
         """
