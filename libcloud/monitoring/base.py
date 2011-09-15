@@ -25,8 +25,6 @@ from libcloud import utils
 from libcloud.common.base import ConnectionUserAndKey
 from libcloud.common.types import LibcloudError
 
-CHUNK_SIZE = 8096
-
 class Entity(object):
     """
     Represents an entity to be monitored.
