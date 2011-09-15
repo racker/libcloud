@@ -123,7 +123,7 @@ class OpenStackBaseConnection(ConnectionUserAndKey):
                         driver=self.driver)
 
             for key in ['server_url', 'storage_url', 'cdn_management_url',
-                        'lb_url']:
+                        'lb_url', 'monitoring_url']:
                 scheme, server, request_path, param, query, fragment = (
                     urlparse.urlparse(getattr(self, key)))
                 # Set host to where we want to make further requests to
