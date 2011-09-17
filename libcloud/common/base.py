@@ -19,6 +19,7 @@ import StringIO
 import ssl
 
 from pipes import quote as pquote
+import urlparse
 
 import libcloud
 
@@ -222,7 +223,7 @@ class LoggingHTTPConnection(LoggingConnection, LibcloudHTTPConnection):
         return LibcloudHTTPConnection.request(self, method, url,
                                                body, headers)
 
-class ConnectionKey(object):
+class Connection(object):
     """
     A Base Connection class to derive from.
     """
@@ -233,24 +234,38 @@ class ConnectionKey(object):
     rawResponseCls = RawResponse
     connection = None
     host = '127.0.0.1'
-    port = (80, 443)
+    port = 443
     secure = 1
     driver = None
     action = None
 
-    def __init__(self, key, secure=True, host=None, force_port=None):
-        """
-        Initialize `user_id` and `key`; set `secure` to an C{int} based on
-        passed value.
-        """
-        self.key = key
+    def __init__(self, secure=True, host=None, port=None, url=None):
         self.secure = secure and 1 or 0
         self.ua = []
+        self.url_request_path = ''
+
         if host:
             self.host = host
 
-        if force_port:
-            self.port = (force_port, force_port)
+        if port != None:
+            self.port = port
+        else:
+            if self.secure == 1:
+                self.port = 443
+            else:
+                self.port = 80
+
+        if url:
+            scheme, netloc, request_path, param, query, fragment = urlparse.urlparse(url)
+
+            if scheme not in ['http', 'https']:
+                raise LibcloudError('Invalid scheme: %s in url %s' % (scheme, url))
+
+            if ":" in netloc:
+                netloc, port = netloc.rsplit(":")
+                self.port = port
+            self.host = netloc
+            self.url_request_path = request_path
 
     def connect(self, host=None, port=None):
         """
@@ -265,12 +280,7 @@ class ConnectionKey(object):
         @returns: A connection
         """
         host = host or self.host
-
-        # port might be included in service url, so pick it if it's present
-        if ":" in host:
-            host, port = host.split(":")
-        else:
-            port = port or self.port[self.secure]
+        port = port or self.port
 
         kwargs = {'host': host, 'port': int(port)}
 
@@ -348,6 +358,10 @@ class ConnectionKey(object):
         if headers is None:
             headers = {}
 
+        host = host or self.host
+
+        action = self.url_request_path + action
+
         self.action = action
         self.method = method
         # Extend default parameters
@@ -356,7 +370,6 @@ class ConnectionKey(object):
         headers = self.add_default_headers(headers)
         # We always send a user-agent header
         headers.update({'User-Agent': self._user_agent()})
-        host = host or self.host
         headers.update({'Host': host})
         # Encode data if necessary
         if data != '' and data != None:
@@ -438,6 +451,18 @@ class ConnectionKey(object):
         Override in a provider's subclass.
         """
         return data
+    
+class ConnectionKey(Connection):
+    """
+    A Base Connection class to derive from, which includes a
+    """
+    def __init__(self, key, secure=True, host=None, port=None, url=None):
+        """
+        Initialize `user_id` and `key`; set `secure` to an C{int} based on
+        passed value.
+        """
+        super(ConnectionKey, self).__init__(secure=secure, host=host, port=port, url=url)
+        self.key = key
 
 class ConnectionUserAndKey(ConnectionKey):
     """
@@ -446,6 +471,7 @@ class ConnectionUserAndKey(ConnectionKey):
 
     user_id = None
 
-    def __init__(self, user_id, key, secure=True, host=None, port=None):
-        super(ConnectionUserAndKey, self).__init__(key, secure, host, port)
+    def __init__(self, user_id, key, secure=True, host=None, port=None, url=None):
+        super(ConnectionUserAndKey, self).__init__(key, secure=secure,
+                                                   host=host, port=port, url=url)
         self.user_id = user_id
