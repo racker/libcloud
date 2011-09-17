@@ -22,6 +22,7 @@ from pipes import quote as pquote
 import urlparse
 
 import libcloud
+from libcloud.common.types import LibcloudError
 
 from libcloud.httplib_ssl import LibcloudHTTPSConnection
 from httplib import HTTPConnection as LibcloudHTTPConnection
