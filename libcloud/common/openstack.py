@@ -120,16 +120,15 @@ class OpenStackAuthConnection(ConnectionUserAndKey):
 
 class OpenStackBaseConnection(ConnectionUserAndKey):
 
-    auth_host = None
+    auth_url = None
 
     def __init__(self, user_id, key, secure, host=None, port=None):
         self.cdn_management_url = None
         self.storage_url = None
+
         self.auth_token = None
-        if host is not None:
-            self.auth_host = host
-        if port is not None:
-            self.port = (port, port)
+        self._host = host
+        self._port = port
 
         super(OpenStackBaseConnection, self).__init__(
             user_id, key, secure=secure)
@@ -184,10 +183,10 @@ class OpenStackBaseConnection(ConnectionUserAndKey):
         request yet, do it here. Otherwise, just return the management host.
         """
         if not self.auth_token:
-            # TODO improve URL passing in all the lower level drivers
-            auth_url = 'https://%s/v1.1/' % (self.auth_host)
+            if self.auth_url == None:
+                raise LibcloudError('OpenStack instance must have auth_url set')
 
-            osa = OpenStackAuthConnection(self, auth_url, self.user_id, self.key)
+            osa = OpenStackAuthConnection(self, self.auth_url, self.user_id, self.key)
 
             # may throw InvalidCreds, etc
             osa.authenticate()
