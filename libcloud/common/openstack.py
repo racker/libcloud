@@ -18,8 +18,8 @@ Common utilities for OpenStack
 """
 import httplib
 from urllib2 import urlparse
-from libcloud.common.base import ConnectionUserAndKey
-from libcloud.compute.types import InvalidCredsError, MalformedResponseError
+from libcloud.common.base import ConnectionUserAndKey, Response
+from libcloud.compute.types import LibcloudError, InvalidCredsError, MalformedResponseError
 
 try:
     import simplejson as json
@@ -30,17 +30,56 @@ AUTH_API_VERSION = 'v1.0'
 
 __all__ = [
     "OpenStackBaseConnection",
-    "OpenStackAuthDriver",
+    "OpenStackAuthConnection",
     ]
+
+
+# @TODO: Refactor for re-use by other openstack drivers
+class OpenStackAuthResponse(Response):
+    def success(self):
+        return True
+
+    def parse_body(self):
+        if not self.body:
+            return None
+
+        if 'content-type' in self.headers:
+            key = 'content-type'
+        elif 'Content-Type' in self.headers:
+            key = 'Content-Type'
+        else:
+            raise LibcloudError('Missing content-type header', driver=OpenStackAuthConnection)
+
+        content_type = self.headers[key]
+        if content_type.find(';') != -1:
+            content_type = content_type.split(';')[0]
+
+        if content_type == 'application/json':
+            try:
+                data = json.loads(self.body)
+            except:
+                raise MalformedResponseError('Failed to parse JSON',
+                                             body=self.body,
+                                             driver=OpenStackAuthConnection)
+        elif content_type == 'text/plain':
+            data = self.body
+        else:
+            data = self.body
+
+        return data
 
 class OpenStackAuthConnection(ConnectionUserAndKey):
 
+    responseCls = OpenStackAuthResponse
     name = 'OpenStack Auth'
 
-    def __init__(self, auth_url, user_id, key):
+    def __init__(self, parent_conn, auth_url, user_id, key):
+        self.parent_conn = parent_conn
+        # enable tests to use the same mock connection classes.
+        self.conn_classes = parent_conn.conn_classes
         self.auth_url = auth_url
         self.urls = {}
-        self.driver = self
+        self.driver = self.parent_conn.driver
         scheme, server, request_path, param, query, fragment = urlparse.urlparse(auth_url)
 
         super(OpenStackAuthConnection, self).__init__(
@@ -52,19 +91,6 @@ class OpenStackAuthConnection(ConnectionUserAndKey):
         return headers
 
     def authenticate(self):
-        """
-        @TODO: error handling
-                                             driver=self.driver)
-        elif resp.status == httplib.UNAUTHORIZED:
-            # HTTP UNAUTHORIZED (401): auth failed
-            raise InvalidCredsError()
-        else:
-            # Any response code != 401 or 204, something is wrong
-            raise MalformedResponseError('Malformed response',
-                    body='code: %s body:%s' % (resp.status, ''.join(resp.body.readlines())),
-                    driver=self.driver)
-
-        """
         reqbody = json.dumps({'credentials': {'username': self.user_id, 'key': self.key}})
         resp = self.request("/auth",
                     data=reqbody,
@@ -74,17 +100,23 @@ class OpenStackAuthConnection(ConnectionUserAndKey):
                     },
                     method='POST')
 
-        if resp.status != httplib.OK:
-            raise InvalidCredsError('Unexpected')
+        if resp.status == httplib.UNAUTHORIZED:
+            # HTTP UNAUTHORIZED (401): auth failed
+            raise InvalidCredsError()
+        elif resp.status != httplib.OK:
+            raise MalformedResponseError('Malformed response',
+                    body='code: %s body:%s' % (resp.status, resp.body),
+                    driver=self.driver)
         else:
             try:
                 body = json.loads(resp.body)
             except Exception, e:
                 raise MalformedResponseError('Failed to parse JSON', e)
-            
-            self.auth_token = body['auth']['token']['id']
-            self.urls = body['auth']['serviceCatalog']
-
+            try:
+                self.auth_token = body['auth']['token']['id']
+                self.urls = body['auth']['serviceCatalog']
+            except KeyError, e:
+                raise MalformedResponseError('Auth JSON response is missing required elements', e)
 
 class OpenStackBaseConnection(ConnectionUserAndKey):
 
@@ -140,7 +172,7 @@ class OpenStackBaseConnection(ConnectionUserAndKey):
         if len(arr):
             for i in arr:
                 if i.get('v1Default', False):
-                    return i
+                    return i['publicURL']
             # uber lame
             return arr[0]
         return None
@@ -155,7 +187,7 @@ class OpenStackBaseConnection(ConnectionUserAndKey):
             # TODO improve URL passing in all the lower level drivers
             auth_url = 'https://%s/v1.1/' % (self.auth_host)
 
-            osa = OpenStackAuthConnection(auth_url, self.user_id, self.key)
+            osa = OpenStackAuthConnection(self, auth_url, self.user_id, self.key)
 
             # may throw InvalidCreds, etc
             osa.authenticate()
