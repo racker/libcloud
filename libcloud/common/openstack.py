@@ -122,11 +122,14 @@ class OpenStackBaseConnection(ConnectionUserAndKey):
 
     auth_url = None
 
-    def __init__(self, user_id, key, secure, host=None, port=None):
+    def __init__(self, user_id, key, secure=True,
+                 host=None, port=None, ex_force_base_url=None):
+        self.server_url = None
         self.cdn_management_url = None
         self.storage_url = None
+        self.lb_url = None
         self.auth_token = None
-
+        self._force_base_url = ex_force_base_url
         super(OpenStackBaseConnection, self).__init__(
             user_id, key)
 
@@ -155,6 +158,8 @@ class OpenStackBaseConnection(ConnectionUserAndKey):
         if not value:
             self._populate_hosts_and_request_paths()
             value = getattr(self, url_key, None)
+        if self._force_base_url != None:
+            value = self._force_base_url
         return value
 
     def _get_default_region(self, arr):
@@ -197,8 +202,14 @@ class OpenStackBaseConnection(ConnectionUserAndKey):
 
             for key in ['server_url', 'storage_url', 'cdn_management_url',
                         'lb_url']:
+                base_url = None
+                if self._force_base_url != None:
+                    base_url = self._force_base_url
+                else:
+                    base_url = getattr(self, key)
+
                 scheme, server, request_path, param, query, fragment = (
-                    urlparse.urlparse(getattr(self, key)))
+                    urlparse.urlparse(base_url))
                 # Set host to where we want to make further requests to
                 setattr(self, '__%s' % (key), server)
                 setattr(self, '__request_path_%s' % (key), request_path)
