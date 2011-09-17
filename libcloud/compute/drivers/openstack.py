@@ -101,9 +101,7 @@ class OpenStackConnection(OpenStackBaseConnection):
             headers = {}
         if not params:
             params = {}
-        # Due to first-run authentication request, we may not have a path
-        if self.server_url:
-            action = self.server_url + action
+
         if method in ("POST", "PUT"):
             headers = {'Content-Type': 'application/xml; charset=UTF-8'}
         if method == "GET":

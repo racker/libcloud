@@ -110,10 +110,8 @@ class CloudFilesConnection(OpenStackBaseConnection):
         else:
             host = None
 
-        # Due to first-run authentication request, we may not have a path
-        if self.request_path:
-            action = self.request_path + action
-            params['format'] = 'json'
+        params['format'] = 'json'
+
         if method in [ 'POST', 'PUT' ]:
             headers.update({'Content-Type': 'application/json; charset=UTF-8'})
 
@@ -121,8 +119,7 @@ class CloudFilesConnection(OpenStackBaseConnection):
             action=action,
             params=params, data=data,
             method=method, headers=headers,
-            raw=raw, host=host
-        )
+            raw=raw)
 
 
 class CloudFilesUSConnection(CloudFilesConnection):

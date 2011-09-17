@@ -77,13 +77,13 @@ class OpenStackAuthConnection(ConnectionUserAndKey):
         self.parent_conn = parent_conn
         # enable tests to use the same mock connection classes.
         self.conn_classes = parent_conn.conn_classes
-        self.auth_url = auth_url
-        self.urls = {}
-        self.driver = self.parent_conn.driver
-        scheme, server, request_path, param, query, fragment = urlparse.urlparse(auth_url)
 
         super(OpenStackAuthConnection, self).__init__(
             user_id, key, url=auth_url)
+
+        self.auth_url = auth_url
+        self.urls = {}
+        self.driver = self.parent_conn.driver
 
     def add_default_headers(self, headers):
         headers['Accept'] = 'application/json'
@@ -125,46 +125,36 @@ class OpenStackBaseConnection(ConnectionUserAndKey):
     def __init__(self, user_id, key, secure, host=None, port=None):
         self.cdn_management_url = None
         self.storage_url = None
-
         self.auth_token = None
-        self._host = host
-        self._port = port
 
         super(OpenStackBaseConnection, self).__init__(
-            user_id, key, secure=secure)
+            user_id, key)
 
     def add_default_headers(self, headers):
         headers['X-Auth-Token'] = self.auth_token
         headers['Accept'] = self.accept_format
         return headers
 
-    @property
-    def request_path(self):
-        return self._get_request_path(url_key=self._url_key)
+    def morph_action(self, action):
+        key = self._url_key
 
-    @property
-    def host(self):
-        # Default to server_host
-        return self._get_host(url_key=self._url_key)
-
-    def _get_request_path(self, url_key):
-        value_key = '__request_path_%s' % (url_key)
-        value = getattr(self, value_key, None)
-
+        value = getattr(self, key, None)
         if not value:
             self._populate_hosts_and_request_paths()
-            value = getattr(self, value_key, None)
 
-        return value
+        request_path = getattr(self, '__request_path_%s' % (key), '')
+        action = request_path + action
+        return action
 
-    def _get_host(self, url_key):
-        value_key = '__%s' % (url_key)
-        value = getattr(self, value_key, None)
+    @property
+    def base_url(self):
+        return self._get_base_url(url_key=self._url_key)
 
+    def _get_base_url(self, url_key):
+        value = getattr(self, url_key, None)
         if not value:
             self._populate_hosts_and_request_paths()
-            value = getattr(self, value_key, None)
-
+            value = getattr(self, url_key, None)
         return value
 
     def _get_default_region(self, arr):
@@ -175,6 +165,10 @@ class OpenStackBaseConnection(ConnectionUserAndKey):
             # uber lame
             return arr[0]
         return None
+
+    def request(self, **kwargs):
+        self._populate_hosts_and_request_paths()
+        return super(OpenStackBaseConnection, self).request(**kwargs)
 
     def _populate_hosts_and_request_paths(self):
         """
@@ -208,3 +202,5 @@ class OpenStackBaseConnection(ConnectionUserAndKey):
                 # Set host to where we want to make further requests to
                 setattr(self, '__%s' % (key), server)
                 setattr(self, '__request_path_%s' % (key), request_path)
+
+            (self.host, self.port, self.secure, self.request_path) = self._tuple_from_url(self.base_url)

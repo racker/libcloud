@@ -56,8 +56,7 @@ class RackspaceConnection(OpenStackBaseConnection):
             headers = {}
         if not params:
             params = {}
-        if self.lb_url:
-            action = self.lb_url + action
+
         if method in ('POST', 'PUT'):
             headers['Content-Type'] = 'application/json'
         if method == 'GET':
