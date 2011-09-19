@@ -13,14 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Common settings for Rackspace Cloud Servers and Cloud Files
-"""
-
-AUTH_URL_US = 'https://auth.api.rackspacecloud.com/v1.1/'
-AUTH_URL_UK = 'https://lon.auth.api.rackspacecloud.com/v1.1/'
-
 __all__ = [
-    "AUTH_URL_US",
-    "AUTH_URL_UK",
-    ]
+    'API_HOST',
+    'API_ROOT'
+]
+
+
+API_HOST = 'api.linode.com'
+API_ROOT = '/'
