@@ -129,6 +129,20 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             return {'ex_force_base_url': self._ex_force_base_url}
         return {}
 
+    def create_entity(self, **kwargs):
+
+        data = {'who': kwargs.get('who'),
+                'why': kwargs.get('why'),
+                'ip_addresses': kwargs.get('ip_addresses', {}),
+                'label': kwargs.get('name'),
+                'metadata': kwargs.get('extra', {})}
+
+        resp = self.connection.request("/entities",
+                                       method='POST',
+                                       data=data)
+
+        return self._to_node(resp.object)
+
     def list_entities(self):
         response = self.connection.request('/entities')
 
