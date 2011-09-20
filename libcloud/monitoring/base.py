@@ -83,10 +83,13 @@ class MonitoringDriver(object):
         if port != None:
             args.append(port)
 
-        self.connection = self.connectionCls(*args)
+        self.connection = self.connectionCls(*args, **self._ex_connection_class_kwargs())
 
         self.connection.driver = self
         self.connection.connect()
+
+    def _ex_connection_class_kwargs(self):
+        return {}
 
     def list_entities(self):
         raise NotImplementedError(

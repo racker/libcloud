@@ -18,9 +18,9 @@ import os.path
 import urllib
 
 try:
-    import json
-except:
     import simplejson as json
+except:
+    import json
 
 from libcloud import utils
 from libcloud.common.types import MalformedResponseError, LibcloudError
@@ -29,7 +29,7 @@ from libcloud.common.base import Response
 from libcloud.monitoring.providers import Provider
 from libcloud.monitoring.base import MonitoringDriver, Entity #, Check, Alarm
 
-from libcloud.common.rackspace import AUTH_HOST_US
+from libcloud.common.rackspace import AUTH_URL_US
 from libcloud.common.openstack import OpenStackBaseConnection
 
 API_VERSION = '1.1'
@@ -79,16 +79,15 @@ class RackspaceMonitoringConnection(OpenStackBaseConnection):
 
     type = Provider.RACKSPACE
     responseCls = RackspaceMonitoringResponse
-    auth_host = AUTH_HOST_US
+    auth_url = AUTH_URL_US
     _url_key = "monitoring_url"
-    host = "ele-api.k1k.me"
 
-    def __init__(self, user_id, key, secure=True):
-        self.monitoring_url = "https://ele-api.k1k.me/1.1/"
+    def __init__(self, user_id, key, secure=False, ex_force_base_url=None):
         self.api_version = API_VERSION
+        self.monitoring_url = ex_force_base_url
         self.accept_format = 'application/json'
         super(RackspaceMonitoringConnection, self).__init__(user_id, key, secure=secure)
-        self.__request_path_monitoring_url = "/1.1/"
+
     def request(self, action, params=None, data='', headers=None, method='GET',
                 raw=False):
         if not headers:
@@ -120,6 +119,15 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     """
     name = 'Rackspace Monitoring'
     connectionCls = RackspaceMonitoringConnection
+
+    def __init__(self, *args, **kwargs):
+        self._ex_force_base_url = kwargs.pop('ex_force_base_url', None)
+        super(RackspaceMonitoringDriver, self).__init__(*args, **kwargs)
+
+    def _ex_connection_class_kwargs(self):
+        if self._ex_force_base_url:
+            return {'ex_force_base_url': self._ex_force_base_url}
+        return {}
 
     def list_entities(self):
         response = self.connection.request('/entities')
