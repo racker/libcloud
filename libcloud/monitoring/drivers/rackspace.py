@@ -99,6 +99,7 @@ class RackspaceMonitoringConnection(OpenStackBaseConnection):
 
         if method in [ 'POST', 'PUT']:
             headers['Content-Type']  = 'application/json; charset=UTF-8'
+            data = json.dumps(data)
 
         return super(RackspaceMonitoringConnection, self).request(
             action=action,
@@ -136,8 +137,22 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         resp = self.connection.request("/entities",
                                        method='POST',
                                        data=data)
+        if resp.status ==  httplib.NO_CONTENT:
+            # location
+            # /1.0/entities/enycekKZoN
+            location = resp.headers.get('location')
+            if not location:
+                raise LibcloudError('Missing location header')
 
-        return self._to_node(resp.object)
+            enId = location.rsplit('/')[-1]
+            return self._read_entity(enId)
+        else:
+            raise LibcloudError('Unexpected status code: %s' % (response.status))
+
+    def _read_entity(self, enId):
+        resp = self.connection.request("/entities/%s" % (enId),
+                                       method='GET')
+        return self._to_entity(resp.object)
 
     def list_entities(self):
         response = self.connection.request('/entities')
@@ -149,16 +164,22 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
         raise LibcloudError('Unexpected status code: %s' % (response.status))
 
+    def delete_entity(self, entity):
+        resp = self.connection.request("/entities/%s" % (entity.id),
+                                       method='DELETE')
+        return resp.status == httplib.NO_CONTENT
+
+    def _to_entity(self, entity):
+        ips = []
+        ipaddrs = entity.get('ip_addresses', {})
+        for key in ipaddrs.keys():
+            ips.append((key, ipaddrs[key]))
+        return Entity(id=entity['key'], name=entity['label'], extra=entity['metadata'], driver=self, ip_addresses = ips)
+
     def _to_entity_list(self, response):
         # @TODO: Handle more then 10k containers - use "lazy list"?
         entities = []
 
         for entity in response:
-            ips = []
-            ipaddrs = entity.get('ip_addresses', {})
-            for key in ipaddrs.keys():
-                ips.append((key, ipaddrs[key]))
-            entities.append(Entity(name=entity['label'], extra=entity['metadata'],
-                                        driver=self, ip_addresses = ips))
-
+            entities.append(self._to_entity(entity))
         return entities

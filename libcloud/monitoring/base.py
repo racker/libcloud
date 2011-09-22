@@ -30,7 +30,7 @@ class Entity(object):
     Represents an entity to be monitored.
     """
 
-    def __init__(self, name, extra, ip_addresses, driver):
+    def __init__(self, id, name, extra, ip_addresses, driver):
         """
         @type name: C{str}
         @param name: Object name (must be unique per container).
@@ -44,7 +44,7 @@ class Entity(object):
         @type driver: C{StorageDriver}
         @param driver: StorageDriver instance.
         """
-
+        self.id = id
         self.name = name
         self.extra = extra or {}
         self.ip_addresses = ip_addresses or []
@@ -54,8 +54,8 @@ class Entity(object):
         return self.driver.delete_entity(self)
 
     def __repr__(self):
-        return ('<Object: name=%s provider=%s ...>' %
-                (self.name, self.driver.name))
+        return ('<Object: id=%s name=%s provider=%s ...>' %
+                (self.id, self.name, self.driver.name))
 
 
 class MonitoringDriver(object):
