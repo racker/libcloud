@@ -183,3 +183,53 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         for entity in response:
             entities.append(self._to_entity(entity))
         return entities
+
+    def list_check_types(self):
+        resp = self.connection.request("/check_types",
+                                       method='GET')
+        print resp.object
+        return resp.status == httplib.NO_CONTENT
+
+    def list_monitoring_zones(self):
+        resp = self.connection.request("/monitoring_zones",
+                                       method='GET')
+        print resp.object
+        return resp.status == httplib.NO_CONTENT
+
+    def list_checks(self, entity):
+        resp = self.connection.request("/entities/%s/checks" % (entity.id),
+                                       method='GET')
+        print resp.object
+        return resp.status == httplib.NO_CONTENT
+
+    def create_check(self, entity, **kwargs):
+        data = {'who': kwargs.get('who'),
+                'why': kwargs.get('why'),
+                'label': kwargs.get('name'),
+                'timeout': kwargs.get('timeout', 29),
+                'period': kwargs.get('period', 30),
+                "mzones_poll": kwargs.get('monitoring_zones', []),
+                "target_alias": kwargs.get('target_alias'),
+                "target_resolver": kwargs.get('target_resolver'),
+                'type': kwargs.get('type'),
+                'details': kwargs.get('details'),
+                }
+
+        for k in data.keys():
+            if data[k] == None:
+                del data[k]
+
+        resp = self.connection.request("/entities/%s/checks" % (entity.id),
+                                       method='POST',
+                                       data=data)
+        if resp.status ==  httplib.NO_CONTENT:
+            # location
+            # /1.0/entities/enycekKZoN
+            location = resp.headers.get('location')
+            if not location:
+                raise LibcloudError('Missing location header')
+
+            enId = location.rsplit('/')[-1]
+            return self._read_entity(enId)
+        else:
+            raise LibcloudError('Unexpected status code: %s' % (response.status))
