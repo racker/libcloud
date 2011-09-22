@@ -32,17 +32,14 @@ from libcloud.compute.base import NodeSize, NodeImage
 from libcloud.common.openstack import OpenStackBaseConnection
 
 __all__ = [
-    'OpenStackResponse',
-    'OpenStackConnection',
-    'OpenStackNodeDriver',
-    'OpenStackSharedIpGroup',
-    'OpenStackNodeIpAddresses',
+    'OpenStack_1_0_Response',
+    'OpenStack_1_0_Connection',
+    'OpenStack_1_0_NodeDriver',
+    'OpenStack_1_0_SharedIpGroup',
+    'OpenStack_1_0_NodeIpAddresses',
     ]
 
-NAMESPACE = 'http://docs.rackspacecloud.com/servers/api/v1.0'
-
-
-class OpenStackResponse(Response):
+class OpenStack_1_0_Response(Response):
 
     def success(self):
         i = int(self.status)
@@ -61,7 +58,7 @@ class OpenStackResponse(Response):
                 raise MalformedResponseError(
                     'Failed to parse XML',
                     body=self.body,
-                    driver=OpenStackNodeDriver)
+                    driver=OpenStack_1_0_NodeDriver)
 
         else:
             return self.body
@@ -73,7 +70,7 @@ class OpenStackResponse(Response):
         except:
             raise MalformedResponseError(
                 "Failed to parse XML",
-                body=self.body, driver=OpenStackNodeDriver)
+                body=self.body, driver=OpenStack_1_0_NodeDriver)
         try:
             text = "; ".join([err.text or ''
                               for err in
@@ -84,14 +81,21 @@ class OpenStackResponse(Response):
         return '%s %s %s' % (self.status, self.error, text)
 
 
-class OpenStackConnection(OpenStackBaseConnection):
+class OpenStack_1_0_Connection(OpenStackBaseConnection):
 
-    responseCls = OpenStackResponse
+    responseCls = OpenStack_1_0_Response
     _url_key = "server_url"
+    XML_NAMESPACE = 'http://docs.rackspacecloud.com/servers/api/v1.0'
 
-    def __init__(self, user_id, key, secure=True, host=None, port=None, ex_force_base_url=None):
-        super(OpenStackConnection, self).__init__(
-            user_id, key, host=host, port=port, ex_force_base_url=ex_force_base_url)
+    def __init__(self, user_id, key, secure=True, host=None, port=None,
+                 ex_force_base_url=None,
+                 ex_force_auth_url=None,
+                 ex_force_auth_version=None):
+        super(OpenStack_1_0_Connection, self).__init__(
+            user_id, key, host=host, port=port,
+            ex_force_base_url=ex_force_base_url,
+            ex_force_auth_url=ex_force_auth_url,
+            ex_force_auth_version=ex_force_auth_version)
         self.api_version = 'v1.0'
         self.accept_format = 'application/xml'
 
@@ -106,14 +110,14 @@ class OpenStackConnection(OpenStackBaseConnection):
             headers = {'Content-Type': 'application/xml; charset=UTF-8'}
         if method == "GET":
             params['cache-busting'] = os.urandom(8).encode('hex')
-        return super(OpenStackConnection, self).request(
+        return super(OpenStack_1_0_Connection, self).request(
             action=action,
             params=params, data=data,
             method=method, headers=headers
         )
 
 
-class OpenStackNodeDriver(NodeDriver):
+class OpenStack_1_0_NodeDriver(NodeDriver):
     """
     OpenStack node driver.
 
@@ -123,7 +127,7 @@ class OpenStackNodeDriver(NodeDriver):
         - imageId: id of image
         - flavorId: id of flavor
     """
-    connectionCls = OpenStackConnection
+    connectionCls = OpenStack_1_0_Connection
     type = Provider.OPENSTACK
     api_name = 'openstack'
     name = 'OpenStack'
@@ -149,12 +153,20 @@ class OpenStackNodeDriver(NodeDriver):
 
     def __init__(self, *args, **kwargs):
         self._ex_force_base_url = kwargs.pop('ex_force_base_url', None)
-        super(OpenStackNodeDriver, self).__init__(*args, **kwargs)
+        self._ex_force_auth_url = kwargs.pop('ex_force_auth_url', None)
+        self._ex_force_auth_version = kwargs.pop('ex_force_auth_version', None)
+        self.XML_NAMESPACE = self.connectionCls.XML_NAMESPACE
+        super(OpenStack_1_0_NodeDriver, self).__init__(*args, **kwargs)
 
     def _ex_connection_class_kwargs(self):
+        rv = {}
         if self._ex_force_base_url:
-            return {'ex_force_base_url': self._ex_force_base_url}
-        return {}
+            rv['ex_force_base_url'] = self._ex_force_base_url
+        if self._ex_force_auth_url:
+            rv['ex_force_auth_url'] = self._ex_force_auth_url
+        if self._ex_force_auth_version:
+            rv['ex_force_auth_version'] = self._ex_force_auth_version
+        return rv
 
 
     def list_nodes(self):
@@ -176,7 +188,7 @@ class OpenStackNodeDriver(NodeDriver):
         if not name:
             name = node.name
 
-        body = {'xmlns': NAMESPACE,
+        body = {'xmlns': self.XML_NAMESPACE,
                  'name': name}
 
         if password != None:
@@ -226,7 +238,7 @@ class OpenStackNodeDriver(NodeDriver):
         image = kwargs['image']
         size = kwargs['size']
 
-        attributes = {'xmlns': NAMESPACE,
+        attributes = {'xmlns': self.XML_NAMESPACE,
              'name': name,
              'imageId': str(image.id),
              'flavorId': str(size.id)
@@ -269,7 +281,7 @@ class OpenStackNodeDriver(NodeDriver):
         """
         elm = ET.Element(
             'resize',
-            {'xmlns': NAMESPACE,
+            {'xmlns': self.XML_NAMESPACE,
              'flavorId': str(size.id),
             }
         )
@@ -292,7 +304,7 @@ class OpenStackNodeDriver(NodeDriver):
         """
         elm = ET.Element(
             'confirmResize',
-            {'xmlns': NAMESPACE}
+            {'xmlns': self.XML_NAMESPACE}
         )
 
         resp = self.connection.request("/servers/%s/action" % (node.id),
@@ -313,7 +325,7 @@ class OpenStackNodeDriver(NodeDriver):
         """
         elm = ET.Element(
             'revertResize',
-            {'xmlns': NAMESPACE}
+            {'xmlns': self.XML_NAMESPACE}
         )
 
         resp = self.connection.request("/servers/%s/action" % (node.id),
@@ -331,7 +343,7 @@ class OpenStackNodeDriver(NodeDriver):
 
         elm = ET.Element(
             'rebuild',
-            {'xmlns': NAMESPACE,
+            {'xmlns': self.XML_NAMESPACE,
              'imageId': image_id,
             }
         )
@@ -347,7 +359,7 @@ class OpenStackNodeDriver(NodeDriver):
 
         group_elm = ET.Element(
             'sharedIpGroup',
-            {'xmlns': NAMESPACE,
+            {'xmlns': self.XML_NAMESPACE,
              'name': group_name,
             }
         )
@@ -387,7 +399,7 @@ class OpenStackNodeDriver(NodeDriver):
 
         elm = ET.Element(
             'shareIp',
-            {'xmlns': NAMESPACE,
+            {'xmlns': self.XML_NAMESPACE,
              'sharedIpGroupId': group_id,
              'configureServer': str_configure}
         )
@@ -477,7 +489,7 @@ class OpenStackNodeDriver(NodeDriver):
         if isinstance(body, list):
             attr = ' '.join(['%s="%s"' % (item[0], item[1])
                              for item in body[1:]])
-            body = '<%s xmlns="%s" %s/>' % (body[0], NAMESPACE, attr)
+            body = '<%s xmlns="%s" %s/>' % (body[0], self.XML_NAMESPACE, attr)
         uri = '/servers/%s/action' % (node.id)
         resp = self.connection.request(uri, method='POST', data=body)
         return resp
@@ -488,7 +500,7 @@ class OpenStackNodeDriver(NodeDriver):
 
     def _fixxpath(self, xpath):
         # ElementTree wants namespaces in its xpaths, so here we add them.
-        return "/".join(["{%s}%s" % (NAMESPACE, e) for e in xpath.split("/")])
+        return "/".join(["{%s}%s" % (self.XML_NAMESPACE, e) for e in xpath.split("/")])
 
     def _findall(self, element, xpath):
         return element.findall(self._fixxpath(xpath))
@@ -598,7 +610,7 @@ class OpenStackNodeDriver(NodeDriver):
 
         image_elm = ET.Element(
                 'image',
-                {'xmlns': NAMESPACE,
+                {'xmlns': self.XML_NAMESPACE,
                     'name': name,
                     'serverId': node.id}
         )
@@ -607,6 +619,16 @@ class OpenStackNodeDriver(NodeDriver):
                     method="POST",
                     data=ET.tostring(image_elm)).object)
 
+    def ex_delete_image(self, image):
+        """Delete an image for node.
+
+        @keyword    image: the image to be deleted
+        @param      image: L{NodeImage}
+        """
+        uri = '/images/%s' % image.id
+        resp = self.connection.request(uri, method='DELETE')
+        return resp.status == 204
+
     def _to_shared_ip_group(self, el):
         servers_el = self._findall(el, 'servers')
         if servers_el:
@@ -614,12 +636,12 @@ class OpenStackNodeDriver(NodeDriver):
                        for s in self._findall(servers_el[0], 'server')]
         else:
             servers = None
-        return OpenStackSharedIpGroup(id=el.get('id'),
+        return OpenStack_1_0_SharedIpGroup(id=el.get('id'),
                                       name=el.get('name'),
                                       servers=servers)
 
     def _to_ip_addresses(self, el):
-        return OpenStackNodeIpAddresses(
+        return OpenStack_1_0_NodeIpAddresses(
             [ip.get('addr') for ip in
              self._findall(self._findall(el, 'public')[0], 'ip')],
             [ip.get('addr') for ip in
@@ -627,15 +649,15 @@ class OpenStackNodeDriver(NodeDriver):
         )
 
     def _get_size_price(self, size_id):
-        if 'openstack' not in PRICING_DATA['compute']:
+        try:
+            return get_size_price(driver_type='compute',
+                                  driver_name=self.api_name,
+                                  size_id=size_id)
+        except KeyError:
             return 0.0
 
-        return get_size_price(driver_type='compute',
-                              driver_name='openstack',
-                              size_id=size_id)
 
-
-class OpenStackSharedIpGroup(object):
+class OpenStack_1_0_SharedIpGroup(object):
     """
     Shared IP group info.
     """
@@ -646,7 +668,7 @@ class OpenStackSharedIpGroup(object):
         self.servers = servers
 
 
-class OpenStackNodeIpAddresses(object):
+class OpenStack_1_0_NodeIpAddresses(object):
     """
     List of public and private IP addresses of a Node.
     """

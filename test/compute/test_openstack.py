@@ -17,7 +17,7 @@ import unittest
 import httplib
 
 from libcloud.common.types import InvalidCredsError, MalformedResponseError
-from libcloud.compute.drivers.rackspace import OpenStackNodeDriver, OpenStackResponse
+from libcloud.compute.drivers.rackspace import OpenStack_1_0_NodeDriver, OpenStack_1_0_Response
 from libcloud.compute.base import Node, NodeImage, NodeSize
 from libcloud.pricing import set_pricing, clear_pricing_data
 
@@ -33,7 +33,7 @@ class OpenStackResponseTestCase(unittest.TestCase):
 
     def test_simple_xml_content_type_handling(self):
         http_response = MockResponse(200, OpenStackResponseTestCase.XML, headers={'content-type': 'application/xml'})
-        body = OpenStackResponse(http_response).parse_body()
+        body = OpenStack_1_0_Response(http_response).parse_body()
 
         self.assertTrue(hasattr(body, 'tag'), "Body should be parsed as XML")
 
@@ -41,7 +41,7 @@ class OpenStackResponseTestCase(unittest.TestCase):
         http_response = MockResponse(200,
                                      OpenStackResponseTestCase.XML,
                                      headers={'content-type': 'application/xml; charset=UTF-8'})
-        body = OpenStackResponse(http_response).parse_body()
+        body = OpenStack_1_0_Response(http_response).parse_body()
 
         self.assertTrue(hasattr(body, 'tag'), "Body should be parsed as XML")
 
@@ -49,7 +49,7 @@ class OpenStackResponseTestCase(unittest.TestCase):
         RESPONSE_BODY = "Accepted"
 
         http_response = MockResponse(202, RESPONSE_BODY, headers={'content-type': 'text/html'})
-        body = OpenStackResponse(http_response).parse_body()
+        body = OpenStack_1_0_Response(http_response).parse_body()
 
         self.assertEqual(body, RESPONSE_BODY, "Non-XML body should be returned as is")
 
@@ -57,7 +57,7 @@ class OpenStackResponseTestCase(unittest.TestCase):
 class OpenStackTests(unittest.TestCase, TestCaseMixin):
     should_list_locations = False
 
-    driver_type = OpenStackNodeDriver
+    driver_type = OpenStack_1_0_NodeDriver
     driver_args = OPENSTACK_PARAMS
 
     @classmethod
@@ -194,6 +194,12 @@ class OpenStackTests(unittest.TestCase, TestCaseMixin):
         self.assertEqual(image.name, "imgtest")
         self.assertEqual(image.id, "12345")
 
+    def test_ex_delete_image(self):
+        image = NodeImage(id=333111, name='Ubuntu 8.10 (intrepid)',
+                          driver=self.driver)
+        ret = self.driver.ex_delete_image(image)
+        self.assertTrue(ret)
+
     def test_ex_list_ip_addresses(self):
         ret = self.driver.ex_list_ip_addresses(node_id=72258)
         self.assertEquals(2, len(ret.public_addresses))
@@ -272,10 +278,15 @@ class OpenStackTests(unittest.TestCase, TestCaseMixin):
         for size in sizes:
             self.assertTrue(isinstance(size.price, float),
                             'Wrong size price type')
-            self.assertEqual(size.price, 0,
-                             'Size price should be zero by default')
+
+            if self.driver.api_name == 'openstack':
+                self.assertEqual(size.price, 0,
+                                 'Size price should be zero by default')
 
     def test_list_sizes_with_specified_pricing(self):
+        if self.driver.api_name != 'openstack':
+            return
+
         pricing = dict((str(i), i) for i in range(1, 9))
 
         set_pricing(driver_type='compute', driver_name='openstack',
@@ -287,8 +298,7 @@ class OpenStackTests(unittest.TestCase, TestCaseMixin):
         for size in sizes:
             self.assertTrue(isinstance(size.price, float),
                             'Wrong size price type')
-            self.assertEqual(size.price, pricing[size.id],
-                             'Size price should be zero by default')
+            self.assertEqual(float(size.price), float(pricing[size.id]))
 
 
 class OpenStackMockHttp(MockHttpTestCase):
@@ -328,6 +338,13 @@ class OpenStackMockHttp(MockHttpTestCase):
     def _v1_0_slug_servers_detail_METADATA(self, method, url, body, headers):
         body = self.fixtures.load('v1_slug_servers_detail_metadata.xml')
         return (httplib.OK, body, XML_HEADERS, httplib.responses[httplib.OK])
+
+    def _v1_0_slug_images_333111(self, method, url, body, headers):
+        if method != "DELETE":
+            raise NotImplemented
+        # this is currently used for deletion of an image
+        # as such it should not accept GET/POST
+        return(httplib.NO_CONTENT,"","",httplib.responses[httplib.NO_CONTENT])
 
     def _v1_0_slug_images(self, method, url, body, headers):
         if method != "POST":
