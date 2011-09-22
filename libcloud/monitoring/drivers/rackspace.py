@@ -86,7 +86,7 @@ class RackspaceMonitoringConnection(OpenStackBaseConnection):
         self.api_version = API_VERSION
         self.monitoring_url = ex_force_base_url
         self.accept_format = 'application/json'
-        super(RackspaceMonitoringConnection, self).__init__(user_id, key, secure=secure)
+        super(RackspaceMonitoringConnection, self).__init__(user_id, key, secure=secure, ex_force_base_url=None)
 
     def request(self, action, params=None, data='', headers=None, method='GET',
                 raw=False):
@@ -94,10 +94,6 @@ class RackspaceMonitoringConnection(OpenStackBaseConnection):
             headers = {}
         if not params:
             params = {}
-
-        # Due to first-run authentication request, we may not have a path
-        if self.request_path:
-            action = self.request_path + action
 
         headers['Accept'] = 'application/json'
 
