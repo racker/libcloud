@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import httplib
+import urlparse
 import os.path
 import urllib
 
@@ -202,6 +203,13 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         print resp.object
         return resp.status == httplib.NO_CONTENT
 
+    def _read_check(self, checkUrl):
+        resp = self.connection.request(urlparse.urlparse(checkUrl).path,
+                                       method='GET')
+        print resp.object
+
+        return resp.status == httplib.NO_CONTENT
+
     def create_check(self, entity, **kwargs):
         data = {'who': kwargs.get('who'),
                 'why': kwargs.get('why'),
@@ -229,7 +237,6 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             if not location:
                 raise LibcloudError('Missing location header')
 
-            enId = location.rsplit('/')[-1]
-            return self._read_entity(enId)
+            return self._read_check(location)
         else:
             raise LibcloudError('Unexpected status code: %s' % (response.status))
