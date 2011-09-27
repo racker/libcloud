@@ -28,7 +28,7 @@ from libcloud.common.types import MalformedResponseError, LibcloudError
 from libcloud.common.base import Response
 
 from libcloud.monitoring.providers import Provider
-from libcloud.monitoring.base import MonitoringDriver, Entity #, Check, Alarm
+from libcloud.monitoring.base import MonitoringDriver, Entity, NotificationPlan #, Check, Alarm
 
 from libcloud.common.rackspace import AUTH_URL_US
 from libcloud.common.openstack import OpenStackBaseConnection
@@ -155,6 +155,11 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                                        method='GET')
         return self._to_entity(resp.object)
 
+    def _read_notification_plan(self, npId):
+        resp = self.connection.request("/notification_plan/%s" % (npId),
+                                       method='GET')
+        return self._to_notification_plan(resp.object)
+
     def list_entities(self):
         response = self.connection.request('/entities')
 
@@ -177,6 +182,11 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             ips.append((key, ipaddrs[key]))
         return Entity(id=entity['key'], name=entity['label'], extra=entity['metadata'], driver=self, ip_addresses = ips)
 
+    def _to_notification_plan(self, notification_plan):
+        return NotificationPlan(id=notification_plan['key'], name=notification_plan['name'],
+            error_state=notification_plan['error_state'], warning_state=notification_plan['warning_state'],
+            ok_state=notification_plan['ok_state'], driver=self)
+
     def _to_entity_list(self, response):
         # @TODO: Handle more then 10k containers - use "lazy list"?
         entities = []
@@ -196,6 +206,78 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                                        method='GET')
         print resp.object
         return resp.status == httplib.NO_CONTENT
+
+    def list_notifications(self):
+        resp = self.connection.request("/notifications",
+                                       method='GET')
+        print resp.object
+        return resp.status == httplib.NO_CONTENT
+
+    def delete_notification(self, notification):
+        resp = self.connection.request("/notifications/%s" % (notification.id),
+                                       method='DELETE')
+        return resp.status == httplib.NO_CONTENT
+
+    def create_notification(self, **kwargs):
+        data = {'type': kwargs.get('type'),
+                'details': kwargs.get('details')}
+
+        for k in data.keys():
+            if data[k] == None:
+                del data[k]
+
+        resp = self.connection.request("/notifications",
+                                       method='POST',
+                                       data=data)
+        if resp.status ==  httplib.NO_CONTENT:
+            # location
+            # /1.0/notification_plans/npycekKZoN
+            location = resp.headers.get('location')
+            if not location:
+                raise LibcloudError('Missing location header')
+
+            npId = location.rsplit('/')[-1]
+            return self._read_notification(npId)
+        else:
+            raise LibcloudError('Unexpected status code: %s' % (response.status))
+
+    def delete_notification_plans(self, notification_plan):
+        resp = self.connection.request("/notifications_plans/%s" % (notification_plan.id),
+                                       method='DELETE')
+        return resp.status == httplib.NO_CONTENT
+
+
+    def list_notification_plans(self):
+        resp = self.connection.request("/notification_plans",
+                                       method='GET')
+        print resp.object
+        return resp.status == httplib.NO_CONTENT
+
+    def create_notification_plan(self, **kwargs):
+        data = {'name': kwargs.get('name'),
+                'error_state': kwargs.get('error_state', []),
+                'warning_state': kwargs.get('warning_state', []),
+                'ok_state': kwargs.get('ok_state', []),
+                }
+
+        for k in data.keys():
+            if data[k] == None:
+                del data[k]
+
+        resp = self.connection.request("/notification_plans",
+                                       method='POST',
+                                       data=data)
+        if resp.status ==  httplib.NO_CONTENT:
+            # location
+            # /1.0/notification_plans/npycekKZoN
+            location = resp.headers.get('location')
+            if not location:
+                raise LibcloudError('Missing location header')
+
+            enId = location.rsplit('/')[-1]
+            return self._read_entity(enId)
+        else:
+            raise LibcloudError('Unexpected status code: %s' % (response.status))
 
     def list_checks(self, entity):
         resp = self.connection.request("/entities/%s/checks" % (entity.id),
@@ -232,7 +314,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                                        data=data)
         if resp.status ==  httplib.NO_CONTENT:
             # location
-            # /1.0/entities/enycekKZoN
+
             location = resp.headers.get('location')
             if not location:
                 raise LibcloudError('Missing location header')
