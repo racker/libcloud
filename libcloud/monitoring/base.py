@@ -71,12 +71,13 @@ class NotificationPlan(object):
     """
     Represents a notification plan.
     """
-    def __init__(self, id, name, error_state, warning_state, ok_state):
+    def __init__(self, id, name, error_state, warning_state, ok_state, driver):
         self.id = id
         self.name = name
         self.error_state = error_state
         self.warning_state = warning_state
         self.ok_state = ok_state
+        self.driver = driver
 
     def delete(self):
         return self.driver.delete_notification_plan(self)

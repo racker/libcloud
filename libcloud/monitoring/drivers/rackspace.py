@@ -27,7 +27,7 @@ from libcloud.common.types import MalformedResponseError, LibcloudError
 from libcloud.common.base import Response
 
 from libcloud.monitoring.providers import Provider
-from libcloud.monitoring.base import MonitoringDriver, Entity #, Check, Alarm
+from libcloud.monitoring.base import MonitoringDriver, Entity, NotificationPlan #, Check, Alarm
 
 from libcloud.common.rackspace import AUTH_URL_US
 from libcloud.common.openstack import OpenStackBaseConnection
@@ -154,6 +154,11 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                                        method='GET')
         return self._to_entity(resp.object)
 
+    def _read_notification_plan(self, npId):
+        resp = self.connection.request("/notification_plan/%s" % (npId),
+                                       method='GET')
+        return self._to_notification_plan(resp.object)
+
     def list_entities(self):
         response = self.connection.request('/entities')
 
@@ -175,6 +180,11 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         for key in ipaddrs.keys():
             ips.append((key, ipaddrs[key]))
         return Entity(id=entity['key'], name=entity['label'], extra=entity['metadata'], driver=self, ip_addresses = ips)
+
+    def _to_notification_plan(self, notification_plan):
+        return NotificationPlan(id=notification_plan['key'], name=notification_plan['name'],
+            error_state=notification_plan['error_state'], warning_state=notification_plan['warning_state'],
+            ok_state=notification_plan['ok_state'], driver=self)
 
     def _to_entity_list(self, response):
         # @TODO: Handle more then 10k containers - use "lazy list"?
@@ -225,8 +235,8 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             if not location:
                 raise LibcloudError('Missing location header')
 
-            enId = location.rsplit('/')[-1]
-            return self._read_entity(enId)
+            npId = location.rsplit('/')[-1]
+            return self._read_notification(npId)
         else:
             raise LibcloudError('Unexpected status code: %s' % (response.status))
 
@@ -296,7 +306,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                                        data=data)
         if resp.status ==  httplib.NO_CONTENT:
             # location
-            # /1.0/entities/chycekKZoN
+
             location = resp.headers.get('location')
             if not location:
                 raise LibcloudError('Missing location header')
