@@ -252,7 +252,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             raise LibcloudError('Unexpected status code: %s' % (response.status))
 
     def delete_notification_plan(self, notification_plan):
-        resp = self.connection.request("/notifications_plans/%s" % (notification_plan.id), method='DELETE')
+        resp = self.connection.request("/notification_plans/%s" % (notification_plan.id), method='DELETE')
         return resp.status == httplib.NO_CONTENT
 
 
