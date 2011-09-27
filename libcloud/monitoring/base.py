@@ -58,6 +58,32 @@ class Entity(object):
                 (self.id, self.name, self.driver.name))
 
 
+class Notification(object):
+    def __init__(self, id, type, details):
+        self.id = id
+        self.type = type
+        self.details = details
+
+    def __repr__(self):
+        return ('<Object: id=%s type=%s ...>' % (self.id, self.type))
+
+class NotificationPlan(object):
+    """
+    Represents a notification plan.
+    """
+    def __init__(self, id, name, error_state, warning_state, ok_state):
+        self.id = id
+        self.name = name
+        self.error_state = error_state
+        self.warning_state = warning_state
+        self.ok_state = ok_state
+
+    def delete(self):
+        return self.driver.delete_notification_plan(self)
+
+    def __repr__(self):
+        return ('<Object: id=%s ...>' % (self.id))
+
 class MonitoringDriver(object):
     """
     A base MonitoringDriver to derive from.
