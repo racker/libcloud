@@ -194,6 +194,14 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             entities.append(self._to_entity(entity))
         return entities
 
+    def _to_notification_plan_list(self, response):
+        notification_plans = []
+
+        for notification_plan in response:
+            notification_plans.append(self._to_notification_plan(notification_plan))
+
+        return notification_plans
+
     def list_check_types(self):
         resp = self.connection.request("/check_types",
                                        method='GET')
@@ -247,10 +255,13 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
 
     def list_notification_plans(self):
-        resp = self.connection.request("/notification_plans",
+        response = self.connection.request("/notification_plans",
                                        method='GET')
-        print resp.object
-        return resp.status == httplib.NO_CONTENT
+        print response.object
+        if response.status == httplib.NO_CONTENT:
+            return []
+        elif response.status == httplib.OK:
+            return self._to_notification_plan_list(json.loads(response.body))
 
     def create_notification_plan(self, **kwargs):
         data = {'name': kwargs.get('name'),
