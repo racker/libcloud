@@ -183,9 +183,12 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return Entity(id=entity['key'], name=entity['label'], extra=entity['metadata'], driver=self, ip_addresses = ips)
 
     def _to_notification_plan(self, notification_plan):
+        error_state = notification_plan.get('error_state', [])
+        warning_state = notification_plan.get('warning_state', [])
+        ok_state = notification_plan.get('ok_state', [])
         return NotificationPlan(id=notification_plan['key'], name=notification_plan['name'],
-            error_state=notification_plan['error_state'], warning_state=notification_plan['warning_state'],
-            ok_state=notification_plan['ok_state'], driver=self)
+            error_state=error_state, warning_state=warning_state, ok_state=ok_state, 
+            driver=self)
 
     def _to_entity_list(self, response):
         # @TODO: Handle more then 10k containers - use "lazy list"?
@@ -194,6 +197,14 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         for entity in response:
             entities.append(self._to_entity(entity))
         return entities
+
+    def _to_notification_plan_list(self, response):
+        notification_plans = []
+
+        for notification_plan in response:
+            notification_plans.append(self._to_notification_plan(notification_plan))
+
+        return notification_plans
 
     def list_check_types(self):
         resp = self.connection.request("/check_types",
@@ -241,17 +252,19 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         else:
             raise LibcloudError('Unexpected status code: %s' % (response.status))
 
-    def delete_notification_plans(self, notification_plan):
-        resp = self.connection.request("/notifications_plans/%s" % (notification_plan.id),
-                                       method='DELETE')
+    def delete_notification_plan(self, notification_plan):
+        resp = self.connection.request("/notification_plans/%s" % (notification_plan.id), method='DELETE')
         return resp.status == httplib.NO_CONTENT
 
 
     def list_notification_plans(self):
-        resp = self.connection.request("/notification_plans",
+        response = self.connection.request("/notification_plans",
                                        method='GET')
-        print resp.object
-        return resp.status == httplib.NO_CONTENT
+        print response.object
+        if response.status == httplib.NO_CONTENT:
+            return []
+        elif response.status == httplib.OK:
+            return self._to_notification_plan_list(json.loads(response.body))
 
     def create_notification_plan(self, **kwargs):
         data = {'name': kwargs.get('name'),
