@@ -25,6 +25,7 @@ except:
 
 from libcloud import utils
 from libcloud.common.types import MalformedResponseError, LibcloudError
+from libcloud.common.types import LazyList
 from libcloud.common.base import Response
 
 from libcloud.monitoring.providers import Provider
@@ -161,21 +162,35 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return self._to_notification_plan(resp.object)
 
     def list_entities(self, ex_next_marker=None):
-        url = '/entities'
+        value_dict = { 'url': '/entities',
+                       'start_marker': ex_next_marker,
+                       'object_mapper': self._to_entity_list}
 
-        if ex_next_marker:
-            url += '?marker=%s' % (ex_next_marker)
+        return LazyList(get_more=self._get_more, value_dict=value_dict)
 
-        response = self.connection.request(url)
+    def _get_more(self, last_key, value_dict):
+        key = None
 
+        params = {}
+
+        if not last_key:
+            key = value_dict.get('start_marker')
+        else:
+            key = last_key
+
+        if key:
+            params['marker'] = key
+
+        response = self.connection.request(value_dict['url'], params)
+
+        # newdata, self._last_key, self._exhausted
         if response.status == httplib.NO_CONTENT:
-            return []
+            return [], None, False
         elif response.status == httplib.OK:
             resp = json.loads(response.body)
-            base = self._to_entity_list(resp)
-            if resp.has_key('next_marker'):
-                base.extend(self.list_entities(ex_next_marker=resp['next_marker']))
-            return base
+            l = value_dict['object_mapper'](resp)
+            m = resp['metadata'].get('next_marker')
+            return l, m, m == None
 
         raise LibcloudError('Unexpected status code: %s' % (response.status))
 
