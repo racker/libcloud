@@ -29,7 +29,10 @@ from libcloud.common.types import LazyList
 from libcloud.common.base import Response
 
 from libcloud.monitoring.providers import Provider
-from libcloud.monitoring.base import MonitoringDriver, Entity, NotificationPlan #, Check, Alarm
+
+from libcloud.monitoring.base import MonitoringDriver, Entity, NotificationPlan, \
+                                     CheckType
+#, Check, Alarm
 
 from libcloud.common.rackspace import AUTH_URL_US
 from libcloud.common.openstack import OpenStackBaseConnection
@@ -231,10 +234,23 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return notification_plans
 
     def list_check_types(self):
-        resp = self.connection.request("/check_types",
-                                       method='GET')
-        print resp.object
-        return resp.status == httplib.NO_CONTENT
+        value_dict = { 'url': '/check_types',
+                       'object_mapper': self._to_check_types_list}
+
+        return LazyList(get_more=self._get_more, value_dict=value_dict)
+
+    def _to_check_type(self, obj):
+        return CheckType(id=obj['key'],
+                         fields=obj.get('fields', []),
+                         is_remote=obj.get('type') == 'remote')
+
+    def _to_check_types_list(self, resp):
+        check_types = []
+
+        for check_type in resp['values']:
+            check_types.append(self._to_check_type(check_type))
+
+        return check_types
 
     def list_monitoring_zones(self):
         resp = self.connection.request("/monitoring_zones",
