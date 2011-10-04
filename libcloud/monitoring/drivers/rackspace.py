@@ -160,13 +160,22 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                                        method='GET')
         return self._to_notification_plan(resp.object)
 
-    def list_entities(self):
-        response = self.connection.request('/entities')
+    def list_entities(self, ex_next_marker=None):
+        url = '/entities'
+
+        if ex_next_marker:
+            url += '?marker=%s' % (ex_next_marker)
+
+        response = self.connection.request(url)
 
         if response.status == httplib.NO_CONTENT:
             return []
         elif response.status == httplib.OK:
-            return self._to_entity_list(json.loads(response.body))
+            resp = json.loads(response.body)
+            base = self._to_entity_list(resp)
+            if resp.has_key('next_marker'):
+                base.extend(self.list_entities(ex_next_marker=resp['next_marker']))
+            return base
 
         raise LibcloudError('Unexpected status code: %s' % (response.status))
 
@@ -194,7 +203,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         # @TODO: Handle more then 10k containers - use "lazy list"?
         entities = []
 
-        for entity in response:
+        for entity in response['values']:
             entities.append(self._to_entity(entity))
         return entities
 
