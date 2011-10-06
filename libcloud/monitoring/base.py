@@ -121,3 +121,51 @@ class MonitoringDriver(object):
     def list_entities(self):
         raise NotImplementedError(
             'list_entities not implemented for this driver')
+
+    def list_checks(self):
+        raise NotImplementedError(
+            'list_checks not implemented for this driver')
+
+    def list_check_types(self):
+        raise NotImplementedError(
+            'list_check_types not implemented for this driver')
+
+    def list_monitoring_zones(self):
+        raise NotImplementedError(
+            'list_monitoring_zones not implemented for this driver')
+
+    def list_notifications(self):
+        raise NotImplementedError(
+            'list_notifications not implemented for this driver')
+
+    def list_notification_plans(self):
+        raise NotImplementedError(
+            'list_notification_plans not implemented for this driver')
+
+    def delete_entity(self):
+        raise NotImplementedError(
+            'delete_entity not implemented for this driver')
+
+    def delete_notification(self, notification):
+        raise NotImplementedError(
+            'delete_notification not implemented for this driver')
+
+    def delete_notification_plan(self, notification):
+        raise NotImplementedError(
+            'delete_notification_plan not implemented for this driver')
+
+    def create_check(self, notification):
+        raise NotImplementedError(
+            'create_check not implemented for this driver')
+
+    def create_entity(self, notification):
+        raise NotImplementedError(
+            'create_entity not implemented for this driver')
+
+    def create_notification(self, notification):
+        raise NotImplementedError(
+            'create_notification not implemented for this driver')
+
+    def create_notification_plan(self, notification):
+        raise NotImplementedError(
+            'create_notification_plan not implemented for this driver')
