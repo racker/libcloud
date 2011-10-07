@@ -25,10 +25,14 @@ except:
 
 from libcloud import utils
 from libcloud.common.types import MalformedResponseError, LibcloudError
+from libcloud.common.types import LazyList
 from libcloud.common.base import Response
 
 from libcloud.monitoring.providers import Provider
-from libcloud.monitoring.base import MonitoringDriver, Entity, NotificationPlan #, Check, Alarm
+
+from libcloud.monitoring.base import MonitoringDriver, Entity, NotificationPlan, \
+                                     CheckType
+#, Check, Alarm
 
 from libcloud.common.rackspace import AUTH_URL_US
 from libcloud.common.openstack import OpenStackBaseConnection
@@ -127,11 +131,59 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             return {'ex_force_base_url': self._ex_force_base_url}
         return {}
 
+    def _grab_action_from_url(self, url):
+        rp = self.connect.request_path
+        p = urlparse.urlparse(url)
+        if p.path.startswith(rp):
+            # /entites/enXXXXX/check/chAAAAAA
+            return p.path[len(rp):]
+        else:
+            raise LibcloudError('Unexpected URL: ' + url)
+
+    def _get_more(self, last_key, value_dict):
+        key = None
+
+        params = {}
+
+        if not last_key:
+            key = value_dict.get('start_marker')
+        else:
+            key = last_key
+
+        if key:
+            params['marker'] = key
+
+        response = self.connection.request(value_dict['url'], params)
+
+        # newdata, self._last_key, self._exhausted
+        if response.status == httplib.NO_CONTENT:
+            return [], None, False
+        elif response.status == httplib.OK:
+            resp = json.loads(response.body)
+            l = value_dict['object_mapper'](resp)
+            m = resp['metadata'].get('next_marker')
+            return l, m, m == None
+
+        raise LibcloudError('Unexpected status code: %s' % (response.status))
+
     def list_check_types(self):
-        resp = self.connection.request("/check_types",
-                                       method='GET')
-        print resp.object
-        return resp.status == httplib.NO_CONTENT
+        value_dict = { 'url': '/check_types',
+                       'object_mapper': self._to_check_types_list}
+
+        return LazyList(get_more=self._get_more, value_dict=value_dict)
+
+    def _to_check_type(self, obj):
+        return CheckType(id=obj['key'],
+                         fields=obj.get('fields', []),
+                         is_remote=obj.get('type') == 'remote')
+
+    def _to_check_types_list(self, resp):
+        check_types = []
+
+        for check_type in resp['values']:
+            check_types.append(self._to_check_type(check_type))
+
+        return check_types
 
     def list_monitoring_zones(self):
         resp = self.connection.request("/monitoring_zones",
@@ -354,16 +406,12 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                                        method='DELETE')
         return resp.status == httplib.NO_CONTENT
 
-    def list_entities(self):
-        response = self.connection.request('/entities')
+    def list_entities(self, ex_next_marker=None):
+        value_dict = { 'url': '/entities',
+                       'start_marker': ex_next_marker,
+                       'object_mapper': self._to_entity_list}
 
-        if response.status == httplib.NO_CONTENT:
-            return []
-        elif response.status == httplib.OK:
-            return self._to_entity_list(json.loads(response.body))
-
-        raise LibcloudError('Unexpected status code: %s' % (response.status))
-
+        return LazyList(get_more=self._get_more, value_dict=value_dict)
 
     def create_entity(self, **kwargs):
 

@@ -65,7 +65,7 @@ class Notification(object):
         self.details = details
 
     def __repr__(self):
-        return ('<Object: id=%s type=%s ...>' % (self.id, self.type))
+        return ('<Notification: id=%s type=%s ...>' % (self.id, self.type))
 
 class NotificationPlan(object):
     """
@@ -83,7 +83,16 @@ class NotificationPlan(object):
         return self.driver.delete_notification_plan(self)
 
     def __repr__(self):
-        return ('<Object: id=%s ...>' % (self.id))
+        return ('<NotificationPlan: id=%s...>' % (self.id))
+
+class CheckType(object):
+    def __init__(self, id, fields, is_remote):
+        self.id = id
+        self.is_remote = is_remote
+        self.fields = fields
+
+    def __repr__(self):
+        return ('<CheckType: id=%s ...>' % (self.id))
 
 class MonitoringDriver(object):
     """
