@@ -243,6 +243,13 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                                        method='DELETE')
         return resp.status == httplib.NO_CONTENT
 
+    def update_notification(self, notification):
+        data = {'type': notifications.type,
+                'details': notification.details }
+
+        return self._update("/notifications/%s" % (notification.id),
+            key=notification.id, data=data, coercion=self._read_notification)
+
     def create_notification(self, **kwargs):
         data = {'type': kwargs.get('type'),
                 'details': kwargs.get('details')}
