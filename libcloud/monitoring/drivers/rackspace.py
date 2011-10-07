@@ -234,14 +234,14 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return self._to_alarm(resp.object)
 
     def _to_alarm(self, alarm):
-        return Alarm(id=alarm['key'], check_type=alarm['check_type'],
+        return Alarm(id=alarm['key'], type=alarm['check_type'],
             criteria=alarm['criteria'], notification_plan_id=alarm['notification_plan_id'],
             driver=self)
 
     def _to_alarm_list(self, response):
         # @TODO: Handle more then 10k containers - use "lazy list"?
         alarms = []
-        for alarm in response:
+        for alarm in response['values']:
             alarms.append(self._to_alarm(alarm))
         return alarms
 
@@ -418,7 +418,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     def _to_entity_list(self, response):
         # @TODO: Handle more then 10k containers - use "lazy list"?
         entities = []
-        for entity in response:
+        for entity in response['values']:
             entities.append(self._to_entity(entity))
         return entities
 
