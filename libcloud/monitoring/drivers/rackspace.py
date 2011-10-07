@@ -31,7 +31,7 @@ from libcloud.common.base import Response
 from libcloud.monitoring.providers import Provider
 
 from libcloud.monitoring.base import MonitoringDriver, Entity, NotificationPlan, \
-                                     CheckType
+                                     CheckType, Check, Notification, NotificationType
 #, Check, Alarm
 
 from libcloud.common.rackspace import AUTH_URL_US
@@ -142,20 +142,19 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         resp = self.connection.request("/entities",
                                        method='POST',
                                        data=data)
-        if resp.status ==  httplib.NO_CONTENT:
+        if resp.status ==  httplib.CREATED:
             # location
             # /1.0/entities/enycekKZoN
             location = resp.headers.get('location')
             if not location:
                 raise LibcloudError('Missing location header')
 
-            enId = location.rsplit('/')[-1]
-            return self._read_entity(enId)
+            #return self._read_response(location, self._to_entity)
         else:
-            raise LibcloudError('Unexpected status code: %s' % (response.status))
+            raise LibcloudError('Unexpected status code: %s' % (resp.status))
 
     def _grab_action_from_url(self, url):
-        rp = self.connect.request_path
+        rp = self.connection.request_path
         p = urlparse.urlparse(url)
         if p.path.startswith(rp):
             # /entites/enXXXXX/check/chAAAAAA
@@ -226,6 +225,9 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             error_state=error_state, warning_state=warning_state, ok_state=ok_state, 
             driver=self)
 
+    def _to_notification(self, notification):
+        return Notification(self, **notification)
+
     def _to_entity_list(self, response):
         # @TODO: Handle more then 10k containers - use "lazy list"?
         entities = []
@@ -234,13 +236,26 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             entities.append(self._to_entity(entity))
         return entities
 
+    def _to_check_list(self, response):
+        checks = []
+
+        for check in response['values']:
+            checks.append(self._to_check(check))
+        return checks
+
     def _to_notification_plan_list(self, response):
         notification_plans = []
 
-        for notification_plan in response:
+        for notification_plan in response['values']:
             notification_plans.append(self._to_notification_plan(notification_plan))
-
         return notification_plans
+
+    def _to_notification_list(self, response):
+        notifications = []
+
+        for notification in response['values']:
+            notifications.append(self._to_notification(notification))
+        return notifications
 
     def list_check_types(self):
         value_dict = { 'url': '/check_types',
@@ -253,6 +268,9 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                          fields=obj.get('fields', []),
                          is_remote=obj.get('type') == 'remote')
 
+    def _to_check(self, obj):
+        return Check(self, **obj)
+
     def _to_check_types_list(self, resp):
         check_types = []
 
@@ -261,17 +279,34 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
         return check_types
 
+    def list_notification_types(self):
+        value_dict = { 'url': '/notification_types',
+                       'object_mapper': self._to_notification_types_list}
+
+        return LazyList(get_more=self._get_more, value_dict=value_dict)
+
+    def _to_notification_type(self, obj):
+        return NotificationType(self, **obj)
+
+
+    def _to_notification_types_list(self, resp):
+        notification_types = []
+
+        for notification_type in resp['values']:
+            notification_types.append(self._to_notification_type(notification_type))
+
+        return notification_types
+
     def list_monitoring_zones(self):
         resp = self.connection.request("/monitoring_zones",
                                        method='GET')
-        print resp.object
         return resp.status == httplib.NO_CONTENT
 
     def list_notifications(self):
-        resp = self.connection.request("/notifications",
-                                       method='GET')
-        print resp.object
-        return resp.status == httplib.NO_CONTENT
+        value_dict = { 'url': '/notifications',
+                       'object_mapper': self._to_notification_list}
+
+        return LazyList(get_more=self._get_more, value_dict=value_dict)
 
     def delete_notification(self, notification):
         resp = self.connection.request("/notifications/%s" % (notification.id),
@@ -289,31 +324,28 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         resp = self.connection.request("/notifications",
                                        method='POST',
                                        data=data)
-        if resp.status ==  httplib.NO_CONTENT:
+        if resp.status ==  httplib.CREATED:
             # location
             # /1.0/notification_plans/npycekKZoN
             location = resp.headers.get('location')
             if not location:
                 raise LibcloudError('Missing location header')
 
-            npId = location.rsplit('/')[-1]
-            return self._read_notification(npId)
+            return self._read_response(location, self._to_notification)
         else:
-            raise LibcloudError('Unexpected status code: %s' % (response.status))
+            raise LibcloudError('Unexpected status code: %s' % (resp.status))
 
     def delete_notification_plan(self, notification_plan):
         resp = self.connection.request("/notification_plans/%s" % (notification_plan.id), method='DELETE')
         return resp.status == httplib.NO_CONTENT
 
 
-    def list_notification_plans(self):
-        response = self.connection.request("/notification_plans",
-                                       method='GET')
-        print response.object
-        if response.status == httplib.NO_CONTENT:
-            return []
-        elif response.status == httplib.OK:
-            return self._to_notification_plan_list(json.loads(response.body))
+    def list_notification_plans(self, ex_next_marker=None):
+        value_dict = { 'url': '/notification_plans',
+                       'start_marker': ex_next_marker,
+                       'object_mapper': self._to_notification_plan_list}
+
+        return LazyList(get_more=self._get_more, value_dict=value_dict)
 
     def create_notification_plan(self, **kwargs):
         data = {'name': kwargs.get('name'),
@@ -329,58 +361,72 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         resp = self.connection.request("/notification_plans",
                                        method='POST',
                                        data=data)
-        if resp.status ==  httplib.NO_CONTENT:
+        if resp.status ==  httplib.CREATED:
             # location
             # /1.0/notification_plans/npycekKZoN
             location = resp.headers.get('location')
             if not location:
                 raise LibcloudError('Missing location header')
 
-            enId = location.rsplit('/')[-1]
-            return self._read_entity(enId)
+            return self._read_response(location, self._to_notification_plan)
         else:
-            raise LibcloudError('Unexpected status code: %s' % (response.status))
+            raise LibcloudError('Unexpected status code: %s' % (resp.status))
 
-    def list_checks(self, entity):
+    def list_checks(self, entity, ex_next_marker=None):
+        value_dict = { 'url': '/entities/%s/checks' % (entity.id,),
+                       'start_marker': ex_next_marker,
+                       'object_mapper': self._to_check_list}
+
+        return LazyList(get_more=self._get_more, value_dict=value_dict)
         resp = self.connection.request("/entities/%s/checks" % (entity.id),
                                        method='GET')
-        print resp.object
         return resp.status == httplib.NO_CONTENT
 
-    def _read_check(self, checkUrl):
-        resp = self.connection.request(urlparse.urlparse(checkUrl).path,
+    def _read_response(self, url, to_func):
+        if not to_func:
+            raise LibcloudError('Expected a conversion function')
+
+        resp = self.connection.request(self._grab_action_from_url(url),
                                        method='GET')
-        print resp.object
+        obj = to_func(resp.object)
+        return obj
 
-        return resp.status == httplib.NO_CONTENT
+    def update_check(self, entity, check, **kwargs):
+        data = check.update_payload()
+        resp = self.connection.request("/entities/%s/checks/%s" % (entity.id, check.id),
+                                       method='PUT',
+                                       data=data)
+        if resp.status ==  httplib.NO_CONTENT:
+            # location
+
+            import pdb; pdb.set_trace()
+            location = resp.headers.get('location')
+            if not location:
+                raise LibcloudError('Missing location header')
+
+            return self._read_response(location, self._to_check)
+        else:
+            raise LibcloudError('Unexpected status code: %s' % (resp.status))
 
     def create_check(self, entity, **kwargs):
-        data = {'who': kwargs.get('who'),
-                'why': kwargs.get('why'),
-                'label': kwargs.get('name'),
-                'timeout': kwargs.get('timeout', 29),
-                'period': kwargs.get('period', 30),
-                "mzones_poll": kwargs.get('monitoring_zones', []),
-                "target_alias": kwargs.get('target_alias'),
-                "target_resolver": kwargs.get('target_resolver'),
-                'type': kwargs.get('type'),
-                'details': kwargs.get('details'),
-                }
-
-        for k in data.keys():
-            if data[k] == None:
-                del data[k]
+        check = Check(self, **kwargs)
+        data = check.payload()
 
         resp = self.connection.request("/entities/%s/checks" % (entity.id),
                                        method='POST',
                                        data=data)
-        if resp.status ==  httplib.NO_CONTENT:
+        if resp.status ==  httplib.CREATED:
             # location
 
             location = resp.headers.get('location')
             if not location:
                 raise LibcloudError('Missing location header')
 
-            return self._read_check(location)
+            return self._read_response(location, self._to_check)
         else:
-            raise LibcloudError('Unexpected status code: %s' % (response.status))
+            raise LibcloudError('Unexpected status code: %s' % (resp.status))
+
+    def delete_check(self, entity, check):
+        resp = self.connection.request("/entities/%s/checks/%s" % (entity.id, check.id),
+                                       method='DELETE')
+        return resp.status == httplib.NO_CONTENT

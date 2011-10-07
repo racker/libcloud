@@ -58,15 +58,6 @@ class Entity(object):
                 (self.id, self.name, self.driver.name))
 
 
-class Notification(object):
-    def __init__(self, id, type, details):
-        self.id = id
-        self.type = type
-        self.details = details
-
-    def __repr__(self):
-        return ('<Notification: id=%s type=%s ...>' % (self.id, self.type))
-
 class NotificationPlan(object):
     """
     Represents a notification plan.
@@ -83,16 +74,136 @@ class NotificationPlan(object):
         return self.driver.delete_notification_plan(self)
 
     def __repr__(self):
-        return ('<NotificationPlan: id=%s name="%s"...>' % (self.id), self.name)
+        return ('<NotificationPlan: id=%s name="%s"...>' % (self.id, self.name))
 
 class CheckType(object):
+
     def __init__(self, id, fields, is_remote):
         self.id = id
         self.is_remote = is_remote
         self.fields = fields
 
     def __repr__(self):
-        return ('<CheckType: id=%s ...>' % (self.id))
+        return ('<CheckType: %s ...>' % (["%s=%s" % (k, v) for k, v in self.__dict__.iteritems()]))
+
+
+class Check(object):
+
+    def __init__(self, driver, **kwargs):
+        self.driver = driver
+        self.id = kwargs.get('key', None)
+        for k, v in self.fields.iteritems():
+            if k in kwargs:
+                v = kwargs[k]
+            setattr(self, k, v)
+
+    def payload(self):
+        data = {}
+        for k, v in self.__dict__.iteritems():
+            if k in self.fields:
+                data[k] = v
+
+        # Resanitize
+        for k in data.keys():
+            if data[k] == None:
+                del data[k]
+
+        return data
+
+    def update_payload(self):
+        data = self.payload()
+        for k, v in data.items():
+            if k in self.immutable_fields:
+                data.pop(k, None)
+        return data
+
+    def delete(self, entity):
+        return self.driver.delete_check(entity, self)
+
+    def __repr__(self):
+        return ('<Check: id=%s ...>' % (self.id))
+
+    fields = {
+        'who': None,
+        'why': None,
+        'label': None,
+        'timeout': 29,
+        'period': 30,
+        "monitoring_zones_poll": [],
+        "target_alias": None,
+        "target_resolver": None,
+        'type': None,
+        'details': None,
+    }
+
+    immutable_fields = {
+        'type': None,
+    }
+
+
+class PayloadObject(object):
+
+    def __init__(self, driver, **kwargs):
+        self.driver = driver
+        self.id = kwargs.get('key', None) 
+
+        for k, v in self.fields.iteritems():
+            if k in kwargs:
+                v = kwargs[k]
+            setattr(self, k, v)
+
+    def payload(self):
+        data = {}
+        for k, v in self.__dict__.iteritems():
+            if k in self.fields:
+                data[k] = v
+
+        # Resanitize
+        for k in data.keys():
+            if data[k] == None:
+                del data[k]
+
+        return data
+
+    def update_payload(self):
+        data = self.payload()
+        for k, v in data.items():
+            if k in self.immutable_fields:
+                data.pop(k, None)
+        return data
+
+    immutable_fields = {}
+    fields = {}
+
+class Notification(PayloadObject):
+
+    def __init__(self, driver, **kwargs):
+        super(Notification, self).__init__(driver, **kwargs)
+
+    def delete(self):
+        return self.driver.delete_notification(self)
+
+    def __repr__(self):
+        return ('<Notification: id=%s name=%s ...>' % (self.id, self.name))
+
+    fields = {
+            'error_state': [],
+            'warning_state': [],
+            'recovery_state': [],
+            'name': None
+        }
+
+class NotificationType(PayloadObject):
+
+    def __init__(self, driver, **kwargs):
+        super(NotificationType, self).__init__(driver, **kwargs)
+
+    def __repr__(self):
+        return ('<NotificationType: id=%s fields=%s ...>' % (self.id, self.fields))
+
+    fields = {
+            'fields': None,
+        }
 
 class MonitoringDriver(object):
     """
