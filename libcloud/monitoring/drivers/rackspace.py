@@ -171,7 +171,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             if data[k] == None:
                 del data[k]
 
-        resp = self.connection.request("/entities/%s/checks" % (entity.id),
+        resp = self.connection.request(url,
                                        method='POST',
                                        data=data)
         if resp.status ==  httplib.NO_CONTENT:
