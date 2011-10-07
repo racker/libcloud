@@ -30,7 +30,7 @@ class Entity(object):
     Represents an entity to be monitored.
     """
 
-    def __init__(self, id, name, extra, ip_addresses, driver):
+    def __init__(self, driver, id, name, extra, ip_addresses):
         """
         @type name: C{str}
         @param name: Object name (must be unique per container).
@@ -71,7 +71,7 @@ class NotificationPlan(object):
     """
     Represents a notification plan.
     """
-    def __init__(self, id, name, error_state, warning_state, ok_state, driver):
+    def __init__(self, driver, id, name=None, error_state=None, warning_state=None, ok_state=None):
         self.id = id
         self.name = name
         self.error_state = error_state
