@@ -31,7 +31,7 @@ from libcloud.common.base import Response
 from libcloud.monitoring.providers import Provider
 
 from libcloud.monitoring.base import MonitoringDriver, Entity, NotificationPlan, \
-                                     CheckType
+                                     CheckType, Alarm
 #, Check, Alarm
 
 from libcloud.common.rackspace import AUTH_URL_US
@@ -166,7 +166,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
         raise LibcloudError('Unexpected status code: %s' % (response.status))
 
-    def _create(self, url, data, coercion):
+    def _create(self, url, data, coerce):
         for k in data.keys():
             if data[k] == None:
                 del data[k]
@@ -179,11 +179,11 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             if not location:
                 raise LibcloudError('Missing location header')
             objId = location.rsplit('/')[-1]
-            return coercion(objId)
+            return coerce(objId)
         else:
             raise LibcloudError('Unexpected status code: %s' % (response.status))
 
-    def _update(self, url, key, data, coercion):
+    def _update(self, url, key, data, coerce):
         for k in data.keys():
             if data[k] == None:
                 del data[k]
@@ -196,7 +196,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             if not location:
                 raise LibcloudError('Missing location header')
 
-            return coercion(key)
+            return coerce(key)
         else:
             raise LibcloudError('Unexpected status code: %s' % (response.status))
 
@@ -226,6 +226,57 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return resp.status == httplib.NO_CONTENT
 
     #######
+    ## Alarms
+    #######
+    def _read_alarm(self, entity, alarm):
+        url = "/entities/%s/alarms/%s" % (entity.id, alarm.id)
+        resp = self.connection.request(url, method='GET')
+        return self._to_alarm(resp.object)
+
+    def _to_alarm(self, alarm):
+        return Alarm(id=alarm['key'], check_type=alarm['check_type'],
+            criteria=alarm['criteria'], notification_plan_id=alarm['notification_plan_id'],
+            driver=self)
+
+    def _to_alarm_list(self, response):
+        # @TODO: Handle more then 10k containers - use "lazy list"?
+        alarms = []
+        for alarm in response:
+            alarms.append(self._to_alarm(alarm))
+        return alarms
+
+    def list_alarms(self, entity, ex_next_marker=None):
+        value_dict = { 'url': '/entities/%s/alarms' % (entity.id),
+                       'start_marker': ex_next_marker,
+                       'object_mapper': self._to_alarm_list}
+
+        return LazyList(get_more=self._get_more, value_dict=value_dict)
+
+    def get_alarm(self, entity, alarm):
+        return self._read_alarm(entity, alarm)
+
+    def delete_alarm(self, entity, alarm):
+        resp = self.connection.request("/entities/%s/alarms/%s" % (entity.id, alarm.id),
+            method='DELETE')
+        return resp.status == httplib.NO_CONTENT
+
+    def update_alarm(self, entity, alarm):
+        data = {'check_type': alarms.check_type,
+                'criteria': alarm.criteria,
+                'notification_plan_id': alarm.notification_plan_id }
+        return self._update("/entities/%s/alarms/%s" % (entity.id, alarm.id),
+            key=alarm.id, data=data, coerce=self._read_alarm)
+
+    def create_alarm(self, entity, **kwargs):
+        data = {'check_type': kwargs.get('check_type'),
+                'criteria': kwargs.get('criteria'),
+                'notification_plan_id': kwargs.get('notification_plan_id')}
+
+        return self._create("/entities/%s/alarms" % (entity.id),
+            data=data, coerce=self._read_alarm)
+
+
+    #######
     ## Notifications
     #######
 
@@ -248,13 +299,13 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                 'details': notification.details }
 
         return self._update("/notifications/%s" % (notification.id),
-            key=notification.id, data=data, coercion=self._read_notification)
+            key=notification.id, data=data, coerce=self._read_notification)
 
     def create_notification(self, **kwargs):
         data = {'type': kwargs.get('type'),
                 'details': kwargs.get('details')}
 
-        return self._create("/notifications", data=data, coercion=self._read_notification)
+        return self._create("/notifications", data=data, coerce=self._read_notification)
 
     #######
     ## Notification Plan
@@ -302,7 +353,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                 }
 
         return self._update("/notification_plans/%s" % (notification_plan.id),
-            key=notification_plan.id, data=data, coercion=self._read_notification_plan)
+            key=notification_plan.id, data=data, coerce=self._read_notification_plan)
 
     def get_notification_plan(self, notification_plan):
         return self._read_notification_plan(notification_plan.id)
@@ -313,7 +364,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                 'warning_state': kwargs.get('warning_state', []),
                 'ok_state': kwargs.get('ok_state', []),
                 }
-        return self._create("/notification_plans", data=data, coercion=self._read_notification_plan)
+        return self._create("/notification_plans", data=data, coerce=self._read_notification_plan)
 
     #######
     ## Checks
@@ -346,7 +397,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                 'details': kwargs.get('details'),
                 }
         return self._create("/entities/%s/checks" % (entity.id),
-            data=data, coercion=self._read_check)
+            data=data, coerce=self._read_check)
 
     #######
     ## Entity
@@ -367,7 +418,6 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     def _to_entity_list(self, response):
         # @TODO: Handle more then 10k containers - use "lazy list"?
         entities = []
-
         for entity in response:
             entities.append(self._to_entity(entity))
         return entities
@@ -392,5 +442,5 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                 'label': kwargs.get('name'),
                 'metadata': kwargs.get('extra', {})}
 
-        return self._create("/entities", data=data, coercion=self._read_entity)
+        return self._create("/entities", data=data, coerce=self._read_entity)
 
