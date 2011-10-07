@@ -30,7 +30,7 @@ class Entity(object):
     Represents an entity to be monitored.
     """
 
-    def __init__(self, id, name, extra, ip_addresses, driver):
+    def __init__(self, id, name, ip_addresses, driver, extra=None):
         """
         @type name: C{str}
         @param name: Object name (must be unique per container).
@@ -71,7 +71,7 @@ class NotificationPlan(object):
     """
     Represents a notification plan.
     """
-    def __init__(self, id, name, error_state, warning_state, ok_state, driver):
+    def __init__(self, id, name, driver, error_state=None, warning_state=None, ok_state=None):
         self.id = id
         self.name = name
         self.error_state = error_state
@@ -83,7 +83,7 @@ class NotificationPlan(object):
         return self.driver.delete_notification_plan(self)
 
     def __repr__(self):
-        return ('<NotificationPlan: id=%s name="%s"...>' % (self.id), self.name)
+        return ('<NotificationPlan: id=%s...>' % (self.id))
 
 class CheckType(object):
     def __init__(self, id, fields, is_remote):
@@ -130,3 +130,51 @@ class MonitoringDriver(object):
     def list_entities(self):
         raise NotImplementedError(
             'list_entities not implemented for this driver')
+
+    def list_checks(self):
+        raise NotImplementedError(
+            'list_checks not implemented for this driver')
+
+    def list_check_types(self):
+        raise NotImplementedError(
+            'list_check_types not implemented for this driver')
+
+    def list_monitoring_zones(self):
+        raise NotImplementedError(
+            'list_monitoring_zones not implemented for this driver')
+
+    def list_notifications(self):
+        raise NotImplementedError(
+            'list_notifications not implemented for this driver')
+
+    def list_notification_plans(self):
+        raise NotImplementedError(
+            'list_notification_plans not implemented for this driver')
+
+    def delete_entity(self):
+        raise NotImplementedError(
+            'delete_entity not implemented for this driver')
+
+    def delete_notification(self, notification):
+        raise NotImplementedError(
+            'delete_notification not implemented for this driver')
+
+    def delete_notification_plan(self, notification):
+        raise NotImplementedError(
+            'delete_notification_plan not implemented for this driver')
+
+    def create_check(self, notification):
+        raise NotImplementedError(
+            'create_check not implemented for this driver')
+
+    def create_entity(self, notification):
+        raise NotImplementedError(
+            'create_entity not implemented for this driver')
+
+    def create_notification(self, notification):
+        raise NotImplementedError(
+            'create_notification not implemented for this driver')
+
+    def create_notification_plan(self, notification):
+        raise NotImplementedError(
+            'create_notification_plan not implemented for this driver')
