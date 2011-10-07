@@ -183,6 +183,23 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         else:
             raise LibcloudError('Unexpected status code: %s' % (response.status))
 
+    def _update(self, url, key, data, coercion):
+        for k in data.keys():
+            if data[k] == None:
+                del data[k]
+
+        resp = self.connection.request(url, method='PUT', data=data)
+        if resp.status ==  httplib.NO_CONTENT:
+            # location
+            # /v1.0/{object_type}/{id}
+            location = resp.headers.get('location')
+            if not location:
+                raise LibcloudError('Missing location header')
+
+            return coercion(key)
+        else:
+            raise LibcloudError('Unexpected status code: %s' % (response.status))
+
     def list_check_types(self):
         value_dict = { 'url': '/check_types',
                        'object_mapper': self._to_check_types_list}
@@ -270,23 +287,6 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             return self._to_notification_plan_list(json.loads(response.body))
 
 
-    def _update(self, url, key, data, coercion):
-        for k in data.keys():
-            if data[k] == None:
-                del data[k]
-
-        resp = self.connection.request(url, method='PUT', data=data)
-        if resp.status ==  httplib.NO_CONTENT:
-            # location
-            # /v1.0/{object_type}/{id}
-            location = resp.headers.get('location')
-            if not location:
-                raise LibcloudError('Missing location header')
-
-            return coercion(key)
-        else:
-            raise LibcloudError('Unexpected status code: %s' % (response.status))
-
     def update_notification_plan(self, notification_plan):
         data = {'name': notification_plan.name,
                 'error_state': notification_plan.error_state,
@@ -296,7 +296,6 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
         return self._update("/notification_plans/%s" % (notification_plan.id),
             key=notification_plan.id, data=data, coercion=self._read_notification_plan)
-
 
     def get_notification_plan(self, notification_plan):
         return self._read_notification_plan(notification_plan.id)
