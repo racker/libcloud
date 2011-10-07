@@ -154,6 +154,15 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         else:
             raise LibcloudError('Unexpected status code: %s' % (response.status))
 
+    def _grab_action_from_url(self, url):
+        rp = self.connect.request_path
+        p = urlparse.urlparse(url)
+        if p.path.startswith(rp):
+            # /entites/enXXXXX/check/chAAAAAA
+            return p.path[len(rp):]
+        else:
+            raise LibcloudError('Unexpected URL: ' + url)
+
     def _read_entity(self, enId):
         resp = self.connection.request("/entities/%s" % (enId),
                                        method='GET')
