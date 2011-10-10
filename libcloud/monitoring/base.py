@@ -106,6 +106,22 @@ class Alarm(object):
     def __repr__(self):
         return ('<Alarm: id=%s ...>' % (self.id))
 
+class Check(object):
+    def __init__(self, id, name, timeout, period, monitoring_zones, target_alias, target_resolver, type, details, driver):
+        self.id = id
+        self.name = name
+        self.timeout = timeout
+        self.period = period
+        self.monitoring_zones = monitoring_zones
+        self.target_alias = target_alias
+        self.target_resolver = target_resolver
+        self.type = type
+        self.details = details
+        self.driver = driver
+
+    def __repr__(self):
+        return ('<Check: id=%s name=%s...>' % (self.id, self.name))
+
 class MonitoringDriver(object):
     """
     A base MonitoringDriver to derive from.

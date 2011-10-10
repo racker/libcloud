@@ -31,7 +31,7 @@ from libcloud.common.base import Response
 from libcloud.monitoring.providers import Provider
 
 from libcloud.monitoring.base import MonitoringDriver, Entity, NotificationPlan, \
-                                     CheckType, Alarm
+                                     CheckType, Alarm, Check
 #, Check, Alarm
 
 from libcloud.common.rackspace import AUTH_URL_US
@@ -378,11 +378,31 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return resp.status == httplib.NO_CONTENT
 
 
-    def list_checks(self, entity):
-        resp = self.connection.request("/entities/%s/checks" % (entity.id),
-                                       method='GET')
-        print resp.object
-        return resp.status == httplib.NO_CONTENT
+    def _to_check(self, obj):
+        return Check(**{
+            'id': obj['key'],
+            'name': obj.get('label'),
+            'timeout': obj['timeout'],
+            'period': obj['period'],
+            'monitoring_zones': obj['monitoring_zones_poll'],
+            'target_alias': obj['target_alias'],
+            'target_resolver': obj['target_resolver'],
+            'type': obj['type'],
+            'details': obj['details'],
+            'driver': self})
+
+    def _to_check_list(self, response):
+        checks = []
+        for check in response['values']:
+            checks.append(self._to_check(check))
+        return checks
+
+    def list_checks(self, entity, ex_next_marker=None):
+        value_dict = { 'url': "/entities/%s/checks" % (entity.id),
+                       'start_marker': ex_next_marker,
+                       'object_mapper': self._to_check_list}
+        return LazyList(get_more=self._get_more, value_dict=value_dict)
+
 
     def create_check(self, entity, **kwargs):
         data = {'who': kwargs.get('who'),
@@ -390,7 +410,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                 'label': kwargs.get('name'),
                 'timeout': kwargs.get('timeout', 29),
                 'period': kwargs.get('period', 30),
-                "mzones_poll": kwargs.get('monitoring_zones', []),
+                "monitoring_zones_poll": kwargs.get('monitoring_zones', []),
                 "target_alias": kwargs.get('target_alias'),
                 "target_resolver": kwargs.get('target_resolver'),
                 'type': kwargs.get('type'),
