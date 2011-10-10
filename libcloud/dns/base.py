@@ -20,7 +20,7 @@ __all__ = [
 ]
 
 
-from libcloud.common.base import ConnectionUserAndKey
+from libcloud.common.base import ConnectionUserAndKey, BaseDriver
 from libcloud.dns.types import RecordType
 
 
@@ -29,7 +29,7 @@ class Zone(object):
     DNS zone.
     """
 
-    def __init__(self, id, domain, type, ttl, extra, driver):
+    def __init__(self, id, domain, type, ttl, driver, extra=None):
         """
         @type id: C{str}
         @param id: Zone id.
@@ -43,24 +43,29 @@ class Zone(object):
         @type ttl: C{int}
         @param ttl: Default TTL for records in this zone (in seconds).
 
-        @type extra: C{dict}
-        @param extra: (optional) Extra attributes (driver specific).
-
         @type driver: C{DNSDriver}
         @param driver: DNSDriver instance.
+
+        @type extra: C{dict}
+        @param extra: (optional) Extra attributes (driver specific).
         """
         self.id = str(id) if id else None
         self.domain = domain
         self.type = type
         self.ttl = ttl or None
-        self.extra = extra or {}
         self.driver = driver
+        self.extra = extra or {}
 
     def list_records(self):
-        self.driver.list_records(zone=self)
+        return self.driver.list_records(zone=self)
 
     def create_record(self, name, type, data, extra=None):
-        self.driver.create_record(name=name, type=type, data=data, extra=extra)
+        return self.driver.create_record(name=name, zone=self, type=type,
+                                         data=data, extra=extra)
+
+    def update(self, domain, type='master', ttl=None, extra=None):
+        return self.driver.update_zone(zone=self, domain=domain, type=type,
+                                       ttl=ttl, extra=extra)
 
     def delete(self):
         return self.driver.delete_zone(zone=self)
@@ -75,7 +80,7 @@ class Record(object):
     Zone record / resource.
     """
 
-    def __init__(self, id, name, type, data, extra, zone, driver):
+    def __init__(self, id, name, type, data, zone, driver, extra=None):
         """
         @type id: C{str}
         @param id: Record id
@@ -89,26 +94,26 @@ class Record(object):
         @type data: C{str}
         @param data: Data for the record (depends on the record type).
 
-        @type extra: C{dict}
-        @param extra: (optional) Extra attributes (driver specific).
-
         @type zone: C{Zone}
         @param zone: Zone instance.
 
         @type driver: C{DNSDriver}
         @param driver: DNSDriver instance.
+
+        @type extra: C{dict}
+        @param extra: (optional) Extra attributes (driver specific).
         """
         self.id = str(id) if id else None
         self.name = name
         self.type = type
         self.data = data
-        self.extra = extra or {}
         self.zone = zone
         self.driver = driver
+        self.extra = extra or {}
 
     def update(self, name, type, data, extra):
         return self.driver.update_record(record=self, name=name, type=type,
-                                       data=data, extra=extra)
+                                         data=data, extra=extra)
 
     def delete(self):
         return self.driver.delete_record(record=self)
@@ -120,7 +125,7 @@ class Record(object):
                  self.data, self.driver.name))
 
 
-class DNSDriver(object):
+class DNSDriver(BaseDriver):
     """
     DNS driver.
     """
@@ -128,27 +133,8 @@ class DNSDriver(object):
     name = None
 
     def __init__(self, key, secret=None, secure=True, host=None, port=None):
-        # TODO: Refactor into BaseDriver class
-        self.key = key
-        self.secret = secret
-        self.secure = secure
-        args = [self.key]
-
-        if self.secret != None:
-            args.append(self.secret)
-
-        args.append(secure)
-
-        if host != None:
-            args.append(host)
-
-        if port != None:
-            args.append(port)
-
-        self.connection = self.connectionCls(*args)
-
-        self.connection.driver = self
-        self.connection.connect()
+        super(DNSDriver, self).__init__(key=key, secret=secret, secure=secure,
+                                        host=host, port=port)
 
     def list_zones(self):
         """
@@ -207,6 +193,28 @@ class DNSDriver(object):
         """
         raise NotImplementedError(
             'create_zone not implemented for this driver')
+
+    def update_zone(self, zone, domain, type='master', ttl=None, extra=None):
+        """
+        Update en existing zone.
+
+        @type zone: C{Zone}
+        @param zone: Zone to update.
+
+        @type domain: C{string}
+        @param domain: Zone domain name.
+
+        @type type: C{string}
+        @param type: Zone type (master / slave).
+
+        @param ttl: C{int}
+        @param ttl: (optional) TTL for new records.
+
+        @type extra: C{dict}
+        @param extra: (optional) Extra attributes (driver specific).
+        """
+        raise NotImplementedError(
+            'update_zone not implemented for this driver')
 
     def create_record(self, name, zone, type, data, extra=None):
         """
