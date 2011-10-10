@@ -174,14 +174,14 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         resp = self.connection.request(url,
                                        method='POST',
                                        data=data)
-        if resp.status ==  httplib.NO_CONTENT:
+        if resp.status ==  httplib.CREATED:
             location = resp.headers.get('location')
             if not location:
                 raise LibcloudError('Missing location header')
             objId = location.rsplit('/')[-1]
             return coerce(objId)
         else:
-            raise LibcloudError('Unexpected status code: %s' % (response.status))
+            raise LibcloudError('Unexpected status code: %s' % (resp.status))
 
     def _update(self, url, key, data, coerce):
         for k in data.keys():
