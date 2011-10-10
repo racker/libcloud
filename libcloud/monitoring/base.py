@@ -94,6 +94,18 @@ class CheckType(object):
     def __repr__(self):
         return ('<CheckType: id=%s ...>' % (self.id))
 
+
+class Alarm(object):
+    def __init__(self, id, type, criteria, driver, notification_plan_id=None):
+        self.id = id
+        self.type = type
+        self.criteria = criteria
+        self.driver = driver
+        self.notification_plan_id = notification_plan_id
+
+    def __repr__(self):
+        return ('<Alarm: id=%s ...>' % (self.id))
+
 class MonitoringDriver(object):
     """
     A base MonitoringDriver to derive from.
