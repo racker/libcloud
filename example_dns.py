@@ -12,28 +12,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import sys
-import unittest
 
-from libcloud.compute.drivers.rackspace import RackspaceNodeDriver
-from test.compute.test_openstack import OpenStack_1_0_Tests
+from pprint import pprint
 
-from test.secrets import RACKSPACE_PARAMS
+from libcloud.dns.types import Provider
+from libcloud.dns.providers import get_driver
 
+Zerigo = get_driver(Provider.ZERIGO)
 
-class RackspaceTests(OpenStack_1_0_Tests):
-    should_list_locations = True
-    should_have_pricing = True
+driver = Zerigo('email', 'key')
 
-    driver_klass = RackspaceNodeDriver
-    driver_type = RackspaceNodeDriver
-    driver_args = RACKSPACE_PARAMS
+zones = driver.list_zones()
+pprint(zones)
 
-    def test_list_sizes_pricing(self):
-        sizes = self.driver.list_sizes()
-
-        for size in sizes:
-            self.assertTrue(size.price > 0)
-
-if __name__ == '__main__':
-    sys.exit(unittest.main())
+records = zones[0].list_records()
+pprint(records)
