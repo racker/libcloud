@@ -160,7 +160,13 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             return [], None, False
         elif response.status == httplib.OK:
             resp = json.loads(response.body)
-            l = value_dict['object_mapper'](resp)
+            l = None
+
+            if value_dict.has_key('list_item_mapper'):
+                func = value_dict['list_item_mapper']
+                l = [func(x) for x in resp['values']]
+            else:
+                l = value_dict['object_mapper'](resp)
             m = resp['metadata'].get('next_marker')
             return l, m, m == None
 
@@ -283,15 +289,12 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     def list_notifications(self, ex_next_marker=None):
         value_dict = { 'url': '/notifications',
                        'start_marker': ex_next_marker,
-                       'object_mapper': self._to_notification_list}
+                       'list_item_mapper': self._to_notification}
 
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
     def _to_notification(self, noticiation):
         return Notification(id=noticiation['key'], type=noticiation['type'], details=noticiation['details'], driver=self)
-
-    def _to_notification_list(self, response):
-        return [self._to_notification(x) for x in response['values']]
 
     def _read_notification(self, noId):
         resp = self.connection.request("/notifications/%s" % (noId))
@@ -324,12 +327,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     #######
 
     def _to_notification_plan_list(self, response):
-        notification_plans = []
-
-        for notification_plan in response:
-            notification_plans.append(self._to_notification_plan(notification_plan))
-
-        return notification_plans
+        return [self._to_notification_plan(x) for x in response['values']]
 
     def _to_notification_plan(self, notification_plan):
         error_state = notification_plan.get('error_state', [])
@@ -348,14 +346,11 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         resp = self.connection.request("/notification_plans/%s" % (notification_plan.id), method='DELETE')
         return resp.status == httplib.NO_CONTENT
 
-    def list_notification_plans(self):
-        response = self.connection.request("/notification_plans",
-                                       method='GET')
-        if response.status == httplib.NO_CONTENT:
-            return []
-        elif response.status == httplib.OK:
-            return self._to_notification_plan_list(json.loads(response.body))
-
+    def list_notification_plans(self, ex_next_marker=None):
+        value_dict = { 'url': "/notification_plans",
+                       'start_marker': ex_next_marker,
+                       'object_mapper': self._to_notification_plan_list}
+        return LazyList(get_more=self._get_more, value_dict=value_dict)
 
     def update_notification_plan(self, notification_plan):
         data = {'name': notification_plan.name,
