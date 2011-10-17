@@ -59,10 +59,14 @@ class Entity(object):
 
 
 class Notification(object):
-    def __init__(self, id, type, details):
+    def __init__(self, id, type, details, driver=None):
         self.id = id
         self.type = type
         self.details = details
+        self.driver = driver
+
+    def delete(self):
+        return self.driver.delete_notification(self)
 
     def __repr__(self):
         return ('<Notification: id=%s type=%s ...>' % (self.id, self.type))
