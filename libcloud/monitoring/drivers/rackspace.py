@@ -31,7 +31,7 @@ from libcloud.common.base import Response
 from libcloud.monitoring.providers import Provider
 
 from libcloud.monitoring.base import MonitoringDriver, Entity, NotificationPlan, \
-                                     CheckType, Alarm, Check
+                                     Notification, CheckType, Alarm, Check
 #, Check, Alarm
 
 from libcloud.common.rackspace import AUTH_URL_US
@@ -280,11 +280,23 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     ## Notifications
     #######
 
-    def list_notifications(self):
-        resp = self.connection.request("/notifications",
-                                       method='GET')
-        print resp.object
-        return resp.status == httplib.NO_CONTENT
+    def list_notifications(self, ex_next_marker=None):
+        value_dict = { 'url': '/notifications',
+                       'start_marker': ex_next_marker,
+                       'object_mapper': self._to_notification_list}
+
+        return LazyList(get_more=self._get_more, value_dict=value_dict)
+
+    def _to_notification(self, noticiation):
+        return Notification(id=noticiation['key'], type=noticiation['type'], details=noticiation['details'], driver=self)
+
+    def _to_notification_list(self, response):
+        return [self._to_notification(x) for x in response['values']]
+
+    def _read_notification(self, noId):
+        resp = self.connection.request("/notifications/%s" % (noId))
+
+        return self._to_notification(resp.object)
 
     def get_notification(self, notification):
         return self._read_notification(notification.id)
