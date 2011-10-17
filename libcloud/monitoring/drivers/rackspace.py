@@ -131,15 +131,6 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             return {'ex_force_base_url': self._ex_force_base_url}
         return {}
 
-    def _grab_action_from_url(self, url):
-        rp = self.connect.request_path
-        p = urlparse.urlparse(url)
-        if p.path.startswith(rp):
-            # /entites/enXXXXX/check/chAAAAAA
-            return p.path[len(rp):]
-        else:
-            raise LibcloudError('Unexpected URL: ' + url)
-
     def _get_more(self, last_key, value_dict):
         key = None
 
@@ -172,6 +163,32 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
         raise LibcloudError('Unexpected status code: %s' % (response.status))
 
+    def _plural_to_singular(self, name):
+        kv = {'entities': 'entity',
+              'alarms': 'alarm',
+              'checks': 'check',
+              'notifications': 'notification',
+              'notification_plans': 'notificationPlan'}
+
+        return kv[name]
+
+    def _url_to_obj_ids(self, url):
+        rv = {}
+        rp = self.connection.request_path
+        path = urlparse.urlparse(url).path
+
+        if path.startswith(rp):
+            # remove version string stuff
+            path = path[len(rp):]
+
+        chunks = path.split('/')[1:]
+
+        for i in range(0, len(chunks), 2):
+            key = self._plural_to_singular(chunks[i]) + "Id"
+            rv[key] =  chunks[i+1]
+
+        return rv;
+
     def _create(self, url, data, coerce):
         for k in data.keys():
             if data[k] == None:
@@ -184,8 +201,8 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             location = resp.headers.get('location')
             if not location:
                 raise LibcloudError('Missing location header')
-            objId = location.rsplit('/')[-1]
-            return coerce(objId)
+            objIds = self._url_to_obj_ids(location)
+            return coerce(**objIds)
         else:
             raise LibcloudError('Unexpected status code: %s' % (resp.status))
 
@@ -202,7 +219,8 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             if not location:
                 raise LibcloudError('Missing location header')
 
-            return coerce(key)
+            objIds = self._url_to_obj_ids(location)
+            return coerce(**objIds)
         else:
             raise LibcloudError('Unexpected status code: %s' % (response.status))
 
@@ -226,9 +244,9 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     #######
     ## Alarms
     #######
-    def _read_alarm(self, entity, alarm):
-        url = "/entities/%s/alarms/%s" % (entity.id, alarm.id)
-        resp = self.connection.request(url, method='GET')
+    def _read_alarm(self, entityId, alarmId):
+        url = "/entities/%s/alarms/%s" % (entityId, alarmId)
+        resp = self.connection.request(url)
         return self._to_alarm(resp.object)
 
     def _to_alarm(self, alarm):
@@ -244,7 +262,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
     def get_alarm(self, entity, alarm):
-        return self._read_alarm(entity, alarm)
+        return self._read_alarm(entity.id, alarm.id)
 
     def delete_alarm(self, entity, alarm):
         resp = self.connection.request("/entities/%s/alarms/%s" % (entity.id, alarm.id),
@@ -281,8 +299,8 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     def _to_notification(self, noticiation):
         return Notification(id=noticiation['key'], type=noticiation['type'], details=noticiation['details'], driver=self)
 
-    def _read_notification(self, noId):
-        resp = self.connection.request("/notifications/%s" % (noId))
+    def _read_notification(self, notificationId):
+        resp = self.connection.request("/notifications/%s" % (notificationId))
 
         return self._to_notification(resp.object)
 
@@ -319,9 +337,8 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             error_state=error_state, warning_state=warning_state, ok_state=ok_state,
             driver=self)
 
-    def _read_notification_plan(self, npId):
-        resp = self.connection.request("/notification_plans/%s" % (npId),
-                                       method='GET')
+    def _read_notification_plan(self, notificationPlanId):
+        resp = self.connection.request("/notification_plans/%s" % (notificationPlanId))
         return self._to_notification_plan(resp.object)
 
     def delete_notification_plan(self, notification_plan):
@@ -359,13 +376,9 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     ## Checks
     #######
 
-    def _read_check(self, checkUrl):
-        resp = self.connection.request(urlparse.urlparse(checkUrl).path,
-                                       method='GET')
-        print resp.object
-
-        return resp.status == httplib.NO_CONTENT
-
+    def _read_check(self, entityId, checkId):
+        resp = self.connection.request('/entities/%s/checks/%s' % (entityId, checkId))
+        return self._to_check(resp.object)
 
     def _to_check(self, obj):
         return Check(**{
@@ -412,7 +425,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                                        method='POST',
                                        data=data)
         # TODO: create native types
-        return resp.body
+        return resp.object
 
     def create_check(self, entity, **kwargs):
         data = self._check_kwarg_to_data(kwargs)
@@ -423,9 +436,8 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     ## Entity
     #######
 
-    def _read_entity(self, enId):
-        resp = self.connection.request("/entities/%s" % (enId),
-                                       method='GET')
+    def _read_entity(self, entityId):
+        resp = self.connection.request("/entities/%s" % (entityId))
         return self._to_entity(resp.object)
 
     def _to_entity(self, entity):
