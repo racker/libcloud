@@ -208,7 +208,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
     def list_check_types(self):
         value_dict = { 'url': '/check_types',
-                       'object_mapper': self._to_check_types_list}
+                       'list_item_mapper': self._to_check_types}
 
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
@@ -216,14 +216,6 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return CheckType(id=obj['key'],
                          fields=obj.get('fields', []),
                          is_remote=obj.get('type') == 'remote')
-
-    def _to_check_types_list(self, resp):
-        check_types = []
-
-        for check_type in resp['values']:
-            check_types.append(self._to_check_type(check_type))
-
-        return check_types
 
     def list_monitoring_zones(self):
         resp = self.connection.request("/monitoring_zones",
@@ -244,17 +236,10 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             criteria=alarm['criteria'], notification_plan_id=alarm['notification_plan_id'],
             driver=self)
 
-    def _to_alarm_list(self, response):
-        # @TODO: Handle more then 10k containers - use "lazy list"?
-        alarms = []
-        for alarm in response['values']:
-            alarms.append(self._to_alarm(alarm))
-        return alarms
-
     def list_alarms(self, entity, ex_next_marker=None):
         value_dict = { 'url': '/entities/%s/alarms' % (entity.id),
                        'start_marker': ex_next_marker,
-                       'object_mapper': self._to_alarm_list}
+                       'list_item_mapper': self._to_alarm}
 
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
@@ -326,9 +311,6 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     ## Notification Plan
     #######
 
-    def _to_notification_plan_list(self, response):
-        return [self._to_notification_plan(x) for x in response['values']]
-
     def _to_notification_plan(self, notification_plan):
         error_state = notification_plan.get('error_state', [])
         warning_state = notification_plan.get('warning_state', [])
@@ -349,7 +331,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     def list_notification_plans(self, ex_next_marker=None):
         value_dict = { 'url': "/notification_plans",
                        'start_marker': ex_next_marker,
-                       'object_mapper': self._to_notification_plan_list}
+                       'list_item_mapper': self._to_notification_plan}
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
     def update_notification_plan(self, notification_plan):
@@ -398,16 +380,10 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             'details': obj['details'],
             'driver': self})
 
-    def _to_check_list(self, response):
-        checks = []
-        for check in response['values']:
-            checks.append(self._to_check(check))
-        return checks
-
     def list_checks(self, entity, ex_next_marker=None):
         value_dict = { 'url': "/entities/%s/checks" % (entity.id),
                        'start_marker': ex_next_marker,
-                       'object_mapper': self._to_check_list}
+                       'list_item_mapper': self._to_check}
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
 
@@ -442,13 +418,6 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             ips.append((key, ipaddrs[key]))
         return Entity(id=entity['key'], name=entity['label'], extra=entity['metadata'], driver=self, ip_addresses = ips)
 
-    def _to_entity_list(self, response):
-        # @TODO: Handle more then 10k containers - use "lazy list"?
-        entities = []
-        for entity in response['values']:
-            entities.append(self._to_entity(entity))
-        return entities
-
     def delete_entity(self, entity):
         resp = self.connection.request("/entities/%s" % (entity.id),
                                        method='DELETE')
@@ -457,7 +426,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     def list_entities(self, ex_next_marker=None):
         value_dict = { 'url': '/entities',
                        'start_marker': ex_next_marker,
-                       'object_mapper': self._to_entity_list}
+                       'list_item_mapper': self._to_entity}
 
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
