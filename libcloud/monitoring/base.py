@@ -107,6 +107,9 @@ class Alarm(object):
         self.driver = driver
         self.notification_plan_id = notification_plan_id
 
+    def delete(self):
+        return self.driver.delete_alarm(self)
+
     def __repr__(self):
         return ('<Alarm: id=%s ...>' % (self.id))
 
@@ -125,6 +128,9 @@ class Check(object):
 
     def __repr__(self):
         return ('<Check: id=%s name=%s...>' % (self.id, self.name))
+
+    def delete(self):
+        return self.driver.delete_check(self)
 
 class MonitoringDriver(object):
     """
