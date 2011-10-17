@@ -155,9 +155,9 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
             if value_dict.has_key('list_item_mapper'):
                 func = value_dict['list_item_mapper']
-                l = [func(x) for x in resp['values']]
+                l = [func(x, value_dict) for x in resp['values']]
             else:
-                l = value_dict['object_mapper'](resp)
+                l = value_dict['object_mapper'](resp, value_dict)
             m = resp['metadata'].get('next_marker')
             return l, m, m == None
 
@@ -226,11 +226,11 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
     def list_check_types(self):
         value_dict = { 'url': '/check_types',
-                       'list_item_mapper': self._to_check_types}
+                       'list_item_mapper': self._to_check_type}
 
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
-    def _to_check_type(self, obj):
+    def _to_check_type(self, obj, value_dict):
         return CheckType(id=obj['key'],
                          fields=obj.get('fields', []),
                          is_remote=obj.get('type') == 'remote')
@@ -247,33 +247,34 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     def _read_alarm(self, entityId, alarmId):
         url = "/entities/%s/alarms/%s" % (entityId, alarmId)
         resp = self.connection.request(url)
-        return self._to_alarm(resp.object)
+        return self._to_alarm(resp.object, {'entity_id': entityId})
 
-    def _to_alarm(self, alarm):
+    def _to_alarm(self, alarm, value_dict):
         return Alarm(id=alarm['key'], type=alarm['check_type'],
             criteria=alarm['criteria'], notification_plan_id=alarm['notification_plan_id'],
-            driver=self)
+            driver=self, entity_id=value_dict['entity_id'])
 
     def list_alarms(self, entity, ex_next_marker=None):
         value_dict = { 'url': '/entities/%s/alarms' % (entity.id),
                        'start_marker': ex_next_marker,
-                       'list_item_mapper': self._to_alarm}
+                       'list_item_mapper': self._to_alarm,
+                       'entity_id': entity.id}
 
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
     def get_alarm(self, entity, alarm):
         return self._read_alarm(entity.id, alarm.id)
 
-    def delete_alarm(self, entity, alarm):
-        resp = self.connection.request("/entities/%s/alarms/%s" % (entity.id, alarm.id),
+    def delete_alarm(self, alarm):
+        resp = self.connection.request("/entities/%s/alarms/%s" % (alarm.entity_id, alarm.id),
             method='DELETE')
         return resp.status == httplib.NO_CONTENT
 
-    def update_alarm(self, entity, alarm):
+    def update_alarm(self, alarm):
         data = {'check_type': alarms.check_type,
                 'criteria': alarm.criteria,
                 'notification_plan_id': alarm.notification_plan_id }
-        return self._update("/entities/%s/alarms/%s" % (entity.id, alarm.id),
+        return self._update("/entities/%s/alarms/%s" % (alarm.entity_id, alarm.id),
             key=alarm.id, data=data, coerce=self._read_alarm)
 
     def create_alarm(self, entity, **kwargs):
@@ -296,13 +297,13 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
-    def _to_notification(self, noticiation):
+    def _to_notification(self, noticiation, value_dict):
         return Notification(id=noticiation['key'], type=noticiation['type'], details=noticiation['details'], driver=self)
 
     def _read_notification(self, notificationId):
         resp = self.connection.request("/notifications/%s" % (notificationId))
 
-        return self._to_notification(resp.object)
+        return self._to_notification(resp.object, {})
 
     def get_notification(self, notification):
         return self._read_notification(notification.id)
@@ -329,7 +330,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     ## Notification Plan
     #######
 
-    def _to_notification_plan(self, notification_plan):
+    def _to_notification_plan(self, notification_plan, value_dict):
         error_state = notification_plan.get('error_state', [])
         warning_state = notification_plan.get('warning_state', [])
         ok_state = notification_plan.get('ok_state', [])
@@ -339,7 +340,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
     def _read_notification_plan(self, notificationPlanId):
         resp = self.connection.request("/notification_plans/%s" % (notificationPlanId))
-        return self._to_notification_plan(resp.object)
+        return self._to_notification_plan(resp.object, {})
 
     def delete_notification_plan(self, notification_plan):
         resp = self.connection.request("/notification_plans/%s" % (notification_plan.id), method='DELETE')
@@ -378,9 +379,9 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
     def _read_check(self, entityId, checkId):
         resp = self.connection.request('/entities/%s/checks/%s' % (entityId, checkId))
-        return self._to_check(resp.object)
+        return self._to_check(resp.object, {'entity_id': entityId})
 
-    def _to_check(self, obj):
+    def _to_check(self, obj, value_dict):
         return Check(**{
             'id': obj['key'],
             'name': obj.get('label'),
@@ -391,12 +392,14 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             'target_resolver': obj['target_resolver'],
             'type': obj['type'],
             'details': obj['details'],
-            'driver': self})
+            'driver': self,
+            'entity_id': value_dict['entity_id']})
 
     def list_checks(self, entity, ex_next_marker=None):
         value_dict = { 'url': "/entities/%s/checks" % (entity.id),
                        'start_marker': ex_next_marker,
-                       'list_item_mapper': self._to_check}
+                       'list_item_mapper': self._to_check,
+                       'entity_id': entity.id}
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
 
@@ -438,9 +441,9 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
     def _read_entity(self, entityId):
         resp = self.connection.request("/entities/%s" % (entityId))
-        return self._to_entity(resp.object)
+        return self._to_entity(resp.object, {})
 
-    def _to_entity(self, entity):
+    def _to_entity(self, entity, value_dict):
         ips = []
         ipaddrs = entity.get('ip_addresses', {})
         for key in ipaddrs.keys():

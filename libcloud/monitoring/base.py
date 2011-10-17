@@ -100,12 +100,13 @@ class CheckType(object):
 
 
 class Alarm(object):
-    def __init__(self, id, type, criteria, driver, notification_plan_id=None):
+    def __init__(self, id, type, criteria, driver, entity_id, notification_plan_id=None):
         self.id = id
         self.type = type
         self.criteria = criteria
         self.driver = driver
         self.notification_plan_id = notification_plan_id
+        self.entity_id = entity_id
 
     def delete(self):
         return self.driver.delete_alarm(self)
@@ -114,7 +115,7 @@ class Alarm(object):
         return ('<Alarm: id=%s ...>' % (self.id))
 
 class Check(object):
-    def __init__(self, id, name, timeout, period, monitoring_zones, target_alias, target_resolver, type, details, driver):
+    def __init__(self, id, name, timeout, period, monitoring_zones, target_alias, target_resolver, type, details, entity_id, driver):
         self.id = id
         self.name = name
         self.timeout = timeout
@@ -124,6 +125,7 @@ class Check(object):
         self.target_resolver = target_resolver
         self.type = type
         self.details = details
+        self.entity_id = entity_id
         self.driver = driver
 
     def __repr__(self):
