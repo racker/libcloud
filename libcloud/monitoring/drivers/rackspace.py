@@ -387,7 +387,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
 
-    def create_check(self, entity, **kwargs):
+    def _check_kwarg_to_data(self, kwargs):
         data = {'who': kwargs.get('who'),
                 'why': kwargs.get('why'),
                 'label': kwargs.get('name'),
@@ -399,6 +399,23 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                 'type': kwargs.get('type'),
                 'details': kwargs.get('details'),
                 }
+
+        for k in data.keys():
+            if data[k] == None:
+                del data[k]
+
+        return data
+
+    def test_check(self, entity, **kwargs):
+        data = self._check_kwarg_to_data(kwargs)
+        resp = self.connection.request("/entities/%s/test-check" % (entity.id),
+                                       method='POST',
+                                       data=data)
+        # TODO: create native types
+        return resp.body
+
+    def create_check(self, entity, **kwargs):
+        data = self._check_kwarg_to_data(kwargs)
         return self._create("/entities/%s/checks" % (entity.id),
             data=data, coerce=self._read_check)
 
