@@ -134,7 +134,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     def _get_more(self, last_key, value_dict):
         key = None
 
-        params = {}
+        params = value_dict.get('params', {})
 
         if not last_key:
             key = value_dict.get('start_marker')
@@ -472,3 +472,18 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
         return self._create("/entities", data=data, coerce=self._read_entity)
 
+    def usage(self):
+        resp = self.connection.request("/usage")
+        return resp.object
+
+    def _to_audit(self, audit, value_dict):
+        # TODO: add class
+        return audit
+
+    def list_audits(self, start_from = None, to=None):
+        # TODO: add start/end date support
+        value_dict = { 'url': '/audits',
+                       'params': {'limit': 200},
+                       'list_item_mapper': self._to_audit}
+
+        return LazyList(get_more=self._get_more, value_dict=value_dict)
