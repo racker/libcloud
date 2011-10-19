@@ -32,7 +32,6 @@ from libcloud.monitoring.providers import Provider
 
 from libcloud.monitoring.base import MonitoringDriver, Entity, NotificationPlan, \
                                      Notification, CheckType, Alarm, Check
-#, Check, Alarm
 
 from libcloud.common.rackspace import AUTH_URL_US
 from libcloud.common.openstack import OpenStackBaseConnection
@@ -493,3 +492,13 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                        'list_item_mapper': self._to_audit}
 
         return LazyList(get_more=self._get_more, value_dict=value_dict)
+
+    #######
+    ## Other
+    #######
+
+    def test_check_and_alarm(self, entity, criteria, **kwargs):
+        check_data = self.test_check(entity=entity, **kwargs)
+        data = { 'criteria': criteria, 'check_data': check_data }
+        result = self.test_alarm(entity=entity, **data)
+        return result
