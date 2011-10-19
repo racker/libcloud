@@ -238,7 +238,6 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     def list_monitoring_zones(self):
         resp = self.connection.request("/monitoring_zones",
                                        method='GET')
-        print resp.object
         return resp.status == httplib.NO_CONTENT
 
     #######
@@ -285,6 +284,13 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return self._create("/entities/%s/alarms" % (entity.id),
             data=data, coerce=self._read_alarm)
 
+    def test_alarm(self, entity, **kwargs):
+        data = {'criteria': kwargs.get('criteria'),
+                'check_data': kwargs.get('check_data')}
+        resp = self.connection.request("/entities/%s/test-alarm" % (entity.id),
+                                       method='POST',
+                                       data=data)
+        return resp.object
 
     #######
     ## Notifications
