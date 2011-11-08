@@ -683,41 +683,41 @@ class OpenStack_1_1_MockHttp(MockHttpTestCase):
         }
         return (httplib.NO_CONTENT, "", headers, httplib.responses[httplib.NO_CONTENT])
 
-    def _servers_detail(self, method, url, body, headers):
+    def _v1_1_slug_servers_detail(self, method, url, body, headers):
         body = self.fixtures.load('_servers_detail.json')
         return (httplib.OK, body, self.json_content_headers, httplib.responses[httplib.OK])
 
-    def _flavors_detail(self, method, url, body, headers):
+    def _v1_1_slug_flavors_detail(self, method, url, body, headers):
         body = self.fixtures.load('_flavors_detail.json')
         return (httplib.OK, body, self.json_content_headers, httplib.responses[httplib.OK])
 
-    def _images_detail(self, method, url, body, headers):
+    def _v1_1_slug_images_detail(self, method, url, body, headers):
         body = self.fixtures.load('_images_detail.json')
         return (httplib.OK, body, self.json_content_headers, httplib.responses[httplib.OK])
 
-    def _servers(self, method, url, body, headers):
+    def _v1_1_slug_servers(self, method, url, body, headers):
         body = self.fixtures.load('_servers.json')
         return (httplib.OK, body, self.json_content_headers, httplib.responses[httplib.OK])
 
-    def _servers_12065_action(self, method, url, body, headers):
+    def _v1_1_slug_servers_12065_action(self, method, url, body, headers):
         if method != "POST":
             self.fail('HTTP method other than POST to action URL')
 
         return (httplib.ACCEPTED, "", {}, httplib.responses[httplib.ACCEPTED])
 
-    def _servers_12064_action(self, method, url, body, headers):
+    def _v1_1_slug_servers_12064_action(self, method, url, body, headers):
         if method != "POST":
             self.fail('HTTP method other than POST to action URL')
 
         return (httplib.ACCEPTED, "", {}, httplib.responses[httplib.ACCEPTED])
 
-    def _servers_12065(self, method, url, body, headers):
+    def _v1_1_slug_servers_12065(self, method, url, body, headers):
         if method == "DELETE":
             return (httplib.ACCEPTED, "", {}, httplib.responses[httplib.ACCEPTED])
         else:
             raise NotImplementedError()
 
-    def _servers_12064(self, method, url, body, headers):
+    def _v1_1_slug_servers_12064(self, method, url, body, headers):
         if method == "GET":
             body = self.fixtures.load('_servers_12064.json')
             return (httplib.OK, body, self.json_content_headers, httplib.responses[httplib.OK])
@@ -729,12 +729,12 @@ class OpenStack_1_1_MockHttp(MockHttpTestCase):
         else:
             raise NotImplementedError()
 
-    def _servers_12062(self, method, url, body, headers):
+    def _v1_1_slug_servers_12062(self, method, url, body, headers):
         if method == "GET":
             body = self.fixtures.load('_servers_12064.json')
             return (httplib.OK, body, self.json_content_headers, httplib.responses[httplib.OK])
 
-    def _servers_12063_metadata(self, method, url, body, headers):
+    def _v1_1_slug_servers_12063_metadata(self, method, url, body, headers):
         if method == "GET":
             body = self.fixtures.load('_servers_12063_metadata_two_keys.json')
             return (httplib.OK, body, self.json_content_headers, httplib.responses[httplib.OK])
@@ -742,21 +742,21 @@ class OpenStack_1_1_MockHttp(MockHttpTestCase):
             body = self.fixtures.load('_servers_12063_metadata_two_keys.json')
             return (httplib.OK, body, self.json_content_headers, httplib.responses[httplib.OK])
 
-    def _flavors_7(self, method, url, body, headers):
+    def _v1_1_slug_flavors_7(self, method, url, body, headers):
         if method == "GET":
             body = self.fixtures.load('_flavors_7.json')
             return (httplib.OK, body, self.json_content_headers, httplib.responses[httplib.OK])
         else:
             raise NotImplementedError()
 
-    def _images_13(self, method, url, body, headers):
+    def _v1_1_slug_images_13(self, method, url, body, headers):
         if method == "GET":
             body = self.fixtures.load('_images_13.json')
             return (httplib.OK, body, self.json_content_headers, httplib.responses[httplib.OK])
         else:
             raise NotImplementedError()
 
-    def _images_DELETEUUID(self, method, url, body, headers):
+    def _v1_1_slug_images_DELETEUUID(self, method, url, body, headers):
         if method == "DELETE":
             return (httplib.ACCEPTED, "", {}, httplib.responses[httplib.ACCEPTED])
         else:
