@@ -676,6 +676,10 @@ class OpenStack_1_1_MockHttp(MockHttpTestCase):
     auth_fixtures = OpenStackFixtures()
     json_content_headers = {'content-type': 'application/json; charset=UTF-8'}
 
+    def _v2_0_tokens(self, method, url, body, headers):
+        body = self.auth_fixtures.load('_v2_0__auth.json')
+        return (httplib.OK, body, self.json_content_headers, httplib.responses[httplib.OK])
+
     def _v1_0_(self, method, url, body, headers):
         headers = {
             'x-auth-token': 'FE011C19-CF86-4F87-BE5D-9229145D7A06',
@@ -762,6 +766,16 @@ class OpenStack_1_1_MockHttp(MockHttpTestCase):
         else:
             raise NotImplementedError()
 
+class OpenStack_1_1_Auth_2_0_Tests(OpenStack_1_1_Tests):
+    driver_kwargs = {'ex_force_auth_version': '2.0'}
+
+    def setUp(self):
+        self.driver_klass.connectionCls.conn_classes = (OpenStack_1_1_MockHttp, OpenStack_1_1_MockHttp)
+        self.driver_klass.connectionCls.auth_url = "https://auth.api.example.com/v2.0/"
+        OpenStack_1_1_MockHttp.type = None
+        self.driver = self.create_driver()
+        clear_pricing_data()
+        self.node = self.driver.list_nodes()[1]
 
 if __name__ == '__main__':
     sys.exit(unittest.main())
