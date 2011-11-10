@@ -532,3 +532,16 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         data = { 'criteria': criteria, 'check_data': check_data }
         result = self.test_alarm(entity=entity, **data)
         return result
+
+    # Extension methods
+    def ex_delete_checks(self, entity):
+        # Delete all Checks for an entity
+        checks = self.list_checks(entity=entity)
+        for check in checks:
+            self.delete_check(check=check)
+
+    def ex_delete_alarms(self, entity):
+        # Delete all Alarms for an entity
+        alarms = self.list_alarms(entity=entity)
+        for alarm in alarms:
+            self.delete_alarm(alarm=alarm)
