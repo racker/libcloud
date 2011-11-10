@@ -204,7 +204,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
     def _to_check_type(self, obj):
-        return CheckType(id=obj['key'],
+        return CheckType(id=obj['id'],
                          fields=obj.get('fields', []),
                          is_remote=obj.get('type') == 'remote')
 
@@ -219,7 +219,6 @@ class RackspaceMonitoringDriver(MonitoringDriver):
     def list_monitoring_zones(self):
         resp = self.connection.request("/monitoring_zones",
                                        method='GET')
-        print resp.object
         return resp.status == httplib.NO_CONTENT
 
     #######
@@ -231,7 +230,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return self._to_alarm(resp.object)
 
     def _to_alarm(self, alarm):
-        return Alarm(id=alarm['key'], type=alarm['check_type'],
+        return Alarm(id=alarm['id'], type=alarm['check_type'],
             criteria=alarm['criteria'], notification_plan_id=alarm['notification_plan_id'],
             driver=self)
 
@@ -320,7 +319,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         error_state = notification_plan.get('error_state', [])
         warning_state = notification_plan.get('warning_state', [])
         ok_state = notification_plan.get('ok_state', [])
-        return NotificationPlan(id=notification_plan['key'], name=notification_plan['name'],
+        return NotificationPlan(id=notification_plan['id'], name=notification_plan['name'],
             error_state=error_state, warning_state=warning_state, ok_state=ok_state,
             driver=self)
 
@@ -350,7 +349,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
                 }
 
         return self._update("/notification_plans/%s" % (notification_plan.id),
-            key=notification_plan.id, data=data, coerce=self._read_notification_plan)
+            id=notification_plan.id, data=data, coerce=self._read_notification_plan)
 
     def get_notification_plan(self, notification_plan):
         return self._read_notification_plan(notification_plan.id)
@@ -377,7 +376,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
     def _to_check(self, obj):
         return Check(**{
-            'id': obj['key'],
+            'id': obj['id'],
             'name': obj.get('label'),
             'timeout': obj['timeout'],
             'period': obj['period'],
@@ -430,7 +429,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         ipaddrs = entity.get('ip_addresses', {})
         for key in ipaddrs.keys():
             ips.append((key, ipaddrs[key]))
-        return Entity(id=entity['key'], name=entity['label'], extra=entity['metadata'], driver=self, ip_addresses = ips)
+        return Entity(id=entity['id'], name=entity['label'], extra=entity['metadata'], driver=self, ip_addresses = ips)
 
     def _to_entity_list(self, response):
         # @TODO: Handle more then 10k containers - use "lazy list"?
