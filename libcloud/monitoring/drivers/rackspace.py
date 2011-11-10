@@ -36,6 +36,21 @@ from libcloud.common.openstack import OpenStackBaseConnection
 
 API_VERSION = '1.1'
 
+class RackspaceMonitoringValidationError(LibcloudError):
+
+    def __init__(self, code, type, message, details, driver):
+        self.code = code
+        self.type = type
+        self.message = message
+        self.details = details
+        super(RackspaceMonitoringValidationError, self).__init__(value=message,
+                                                                 driver=driver)
+
+    def __str__(self):
+        string = '<ValidationError type=%s, ' % (self.type)
+        string += 'message="%s", details=%s>' % (self.message, self.details)
+        return string
+
 class RackspaceMonitoringResponse(Response):
 
     valid_response_codes = [ httplib.NOT_FOUND, httplib.CONFLICT ]
@@ -72,6 +87,18 @@ class RackspaceMonitoringResponse(Response):
             data = self.body
 
         return data
+
+    def parse_error(self):
+        body = self.parse_body()
+        if self.status == httplib.BAD_REQUEST:
+            error = RackspaceMonitoringValidationError(message=body['message'],
+                                                       code=body['code'],
+                                                       type=body['type'],
+                                                       details=body['details'],
+                                                       driver=self.connection.driver)
+            return error
+
+        return body
 
 
 class RackspaceMonitoringConnection(OpenStackBaseConnection):
