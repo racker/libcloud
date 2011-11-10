@@ -15,15 +15,12 @@
 
 import httplib
 import urlparse
-import os.path
-import urllib
 
 try:
     import simplejson as json
 except:
     import json
 
-from libcloud import utils
 from libcloud.common.types import MalformedResponseError, LibcloudError
 from libcloud.common.types import LazyList
 from libcloud.common.base import Response
@@ -198,7 +195,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
 
             return coerce(key)
         else:
-            raise LibcloudError('Unexpected status code: %s' % (response.status))
+            raise LibcloudError('Unexpected status code: %s' % (resp.status))
 
     def list_check_types(self):
         value_dict = { 'url': '/check_types',
@@ -261,7 +258,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return resp.status == httplib.NO_CONTENT
 
     def update_alarm(self, entity, alarm):
-        data = {'check_type': alarms.check_type,
+        data = {'check_type': alarm.check_type,
                 'criteria': alarm.criteria,
                 'notification_plan_id': alarm.notification_plan_id }
         return self._update("/entities/%s/alarms/%s" % (entity.id, alarm.id),
@@ -295,7 +292,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return resp.status == httplib.NO_CONTENT
 
     def update_notification(self, notification):
-        data = {'type': notifications.type,
+        data = {'type': notification.type,
                 'details': notification.details }
 
         return self._update("/notifications/%s" % (notification.id),
