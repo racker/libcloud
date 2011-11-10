@@ -485,9 +485,22 @@ class RackspaceMonitoringDriver(MonitoringDriver):
             ips.append((key, ipaddrs[key]))
         return Entity(id=entity['id'], name=entity['label'], extra=entity['metadata'], driver=self, ip_addresses = ips)
 
-    def delete_entity(self, entity):
-        resp = self.connection.request("/entities/%s" % (entity.id),
-                                       method='DELETE')
+    def delete_entity(self, entity, ex_delete_children=False):
+        try:
+            resp = self.connection.request("/entities/%s" % (entity.id),
+                                           method='DELETE')
+        except RackspaceMonitoringValidationError, e:
+            type = e.details['type']
+            if not ex_delete_children or e.type != 'childrenExistError':
+                raise e
+
+            if type == 'Check':
+                self.ex_delete_checks(entity=entity)
+            elif type == 'Alarm':
+                self.ex_delete_alarms(entity=entity)
+
+            return self.delete_entity(entity=entity, ex_delete_children=True)
+
         return resp.status == httplib.NO_CONTENT
 
     def list_entities(self, ex_next_marker=None):
