@@ -95,7 +95,7 @@ class RackspaceMonitoringResponse(Response):
                                                        type=body['type'],
                                                        details=body['details'],
                                                        driver=self.connection.driver)
-            return error
+            raise error
 
         return body
 
