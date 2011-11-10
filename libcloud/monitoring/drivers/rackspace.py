@@ -464,6 +464,12 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return self._create("/entities/%s/checks" % (entity.id),
             data=data, coerce=self._read_check)
 
+    def delete_check(self, check):
+        resp = self.connection.request("/entities/%s/checks/%s" %
+                                       (check.entity_id, check.id),
+                                       method='DELETE')
+        return resp.status == httplib.NO_CONTENT
+
     #######
     ## Entity
     #######
