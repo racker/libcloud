@@ -88,9 +88,11 @@ DRIVERS = {
     Provider.OPSOURCE:
         ('libcloud.compute.drivers.opsource', 'OpsourceNodeDriver'),
     Provider.OPENSTACK:
-        ('libcloud.compute.drivers.openstack', 'OpenStack_1_0_NodeDriver'),
+        ('libcloud.compute.drivers.openstack', 'OpenStackNodeDriver'),
     Provider.NINEFOLD:
         ('libcloud.compute.drivers.ninefold', 'NinefoldNodeDriver'),
+    Provider.TERREMARK:
+        ('libcloud.compute.drivers.vcloud', 'TerremarkDriver')
 }
 
 def get_driver(provider):

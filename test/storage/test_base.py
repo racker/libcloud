@@ -24,11 +24,16 @@ from libcloud.storage.base import StorageDriver
 
 from test import StorageMockHttp # pylint: disable-msg=E0611
 
+
 class BaseStorageTests(unittest.TestCase):
     def setUp(self):
         self.send_called = 0
         StorageDriver.connectionCls.conn_classes = (None, StorageMockHttp)
-        self.driver = StorageDriver('username', 'key', host='localhost')
+
+        self.driver1 = StorageDriver('username', 'key', host='localhost')
+        self.driver1.supports_chunked_encoding = True
+        self.driver2 = StorageDriver('username', 'key', host='localhost')
+        self.driver2.supports_chunked_encoding = False
 
     def test__upload_object_iterator_must_have_next_method(self):
         class Iterator(object):
@@ -42,8 +47,8 @@ class BaseStorageTests(unittest.TestCase):
         class SomeClass(object):
             pass
 
-        valid_iterators = [ Iterator(), Iterator2(), StringIO('bar') ]
-        invalid_iterators = [ 'foobar', '', False, True, 1, object() ]
+        valid_iterators = [Iterator(), Iterator2(), StringIO('bar')]
+        invalid_iterators = ['foobar', '', False, True, 1, object()]
 
         def upload_func(*args, **kwargs):
             return True, 'barfoo', 100
@@ -54,13 +59,13 @@ class BaseStorageTests(unittest.TestCase):
 
         for value in valid_iterators:
             kwargs['iterator'] = value
-            self.driver._upload_object(**kwargs)
+            self.driver1._upload_object(**kwargs)
 
         for value in invalid_iterators:
             kwargs['iterator'] = value
 
             try:
-                self.driver._upload_object(**kwargs)
+                self.driver1._upload_object(**kwargs)
             except AttributeError:
                 pass
             else:
@@ -78,8 +83,9 @@ class BaseStorageTests(unittest.TestCase):
 
         # Normal
         success, data_hash, bytes_transferred = \
-                 self.driver._stream_data(response=response, iterator=iterator,
-                                          chunked=False, calculate_hash=True)
+                 self.driver1._stream_data(response=response,
+                                           iterator=iterator,
+                                           chunked=False, calculate_hash=True)
 
         self.assertTrue(success)
         self.assertEqual(data_hash, hashlib.md5('').hexdigest())
@@ -88,14 +94,48 @@ class BaseStorageTests(unittest.TestCase):
 
         # Chunked
         success, data_hash, bytes_transferred = \
-                 self.driver._stream_data(response=response, iterator=iterator,
-                                          chunked=True, calculate_hash=True)
+                 self.driver1._stream_data(response=response,
+                                           iterator=iterator,
+                                           chunked=True, calculate_hash=True)
 
         self.assertTrue(success)
         self.assertEqual(data_hash, hashlib.md5('').hexdigest())
         self.assertEqual(bytes_transferred, 0)
         self.assertEqual(self.send_called, 5)
 
+    def test__upload_data(self):
+        def mock_send(data):
+            self.send_called += 1
+
+        response = Mock()
+        response.connection.connection.send = mock_send
+
+        data = '123456789901234567'
+        success, data_hash, bytes_transferred = \
+                 self.driver1._upload_data(response=response, data=data,
+                                           calculate_hash=True)
+
+        self.assertTrue(success)
+        self.assertEqual(data_hash, hashlib.md5(data).hexdigest())
+        self.assertEqual(bytes_transferred, (len(data)))
+        self.assertEqual(self.send_called, 1)
+
+    def test__get_hash_function(self):
+        self.driver1.hash_type = 'md5'
+        func = self.driver1._get_hash_function()
+        self.assertTrue(func)
+
+        self.driver1.hash_type = 'sha1'
+        func = self.driver1._get_hash_function()
+        self.assertTrue(func)
+
+        try:
+            self.driver1.hash_type = 'invalid-hash-function'
+            func = self.driver1._get_hash_function()
+        except RuntimeError:
+            pass
+        else:
+            self.fail('Invalid hash type but exception was not thrown')
 
 if __name__ == '__main__':
     sys.exit(unittest.main())

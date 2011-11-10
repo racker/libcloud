@@ -18,6 +18,7 @@ import sys
 import unittest
 import warnings
 import os.path
+from StringIO import StringIO
 
 # In Python > 2.7 DeprecationWarnings are disabled by default
 warnings.simplefilter('default')
@@ -28,10 +29,12 @@ from libcloud.compute.providers import DRIVERS
 
 WARNINGS_BUFFER = []
 
+
 def show_warning(msg, cat, fname, lno, line=None):
     WARNINGS_BUFFER.append((msg, cat, fname, lno))
 
 original_func = warnings.showwarning
+
 
 class TestUtils(unittest.TestCase):
     def setUp(self):
@@ -45,7 +48,8 @@ class TestUtils(unittest.TestCase):
 
     def test_guess_file_mime_type(self):
         file_path = os.path.abspath(__file__)
-        mimetype, encoding = libcloud.utils.guess_file_mime_type(file_path=file_path)
+        mimetype, encoding = libcloud.utils.guess_file_mime_type(
+                file_path=file_path)
 
         self.assertTrue(mimetype.find('python') != -1)
 
@@ -128,6 +132,31 @@ class TestUtils(unittest.TestCase):
                     self.assertEqual(result, 'b' * 9)
 
             self.assertEqual(index, 548)
+
+    def test_exhaust_iterator(self):
+        def iterator_func():
+            for x in range(0, 1000):
+                yield 'aa'
+
+        data = 'aa' * 1000
+        iterator = libcloud.utils.read_in_chunks(iterator=iterator_func())
+        result = libcloud.utils.exhaust_iterator(iterator=iterator)
+        self.assertEqual(result, data)
+
+        result = libcloud.utils.exhaust_iterator(iterator=iterator_func())
+        self.assertEqual(result, data)
+
+        data = '12345678990'
+        iterator = StringIO(data)
+        result = libcloud.utils.exhaust_iterator(iterator=iterator)
+        self.assertEqual(result, data)
+
+    def test_exhaust_iterator_empty_iterator(self):
+        data = ''
+        iterator = StringIO(data)
+        result = libcloud.utils.exhaust_iterator(iterator=iterator)
+        self.assertEqual(result, data)
+
 
 if __name__ == '__main__':
     sys.exit(unittest.main())
