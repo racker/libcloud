@@ -272,7 +272,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return self._to_alarm(resp.object, {'entity_id': entityId})
 
     def _to_alarm(self, alarm, value_dict):
-        return Alarm(id=alarm['key'], type=alarm['check_type'],
+        return Alarm(id=alarm['id'], type=alarm['check_type'],
             criteria=alarm['criteria'], notification_plan_id=alarm['notification_plan_id'],
             driver=self, entity_id=value_dict['entity_id'])
 
@@ -327,7 +327,7 @@ class RackspaceMonitoringDriver(MonitoringDriver):
         return LazyList(get_more=self._get_more, value_dict=value_dict)
 
     def _to_notification(self, noticiation, value_dict):
-        return Notification(id=noticiation['key'], type=noticiation['type'], details=noticiation['details'], driver=self)
+        return Notification(id=noticiation['id'], type=noticiation['type'], details=noticiation['details'], driver=self)
 
     def _read_notification(self, notificationId):
         resp = self.connection.request("/notifications/%s" % (notificationId))
