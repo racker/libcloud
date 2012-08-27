@@ -257,7 +257,9 @@ class OpenStackBaseConnection(ConnectionUserAndKey):
                 else:
                     base_url = getattr(self, key)
 
-                if key == 'storage_url' and os.environ['RACKSPACE_SERVICENET']:
+                if key == 'storage_url' and \
+                  os.environ.has_key('RACKSPACE_SERVICENET') and \
+                  os.environ['RACKSPACE_SERVICENET'] == '1':
                     base_url = 'https://snet-' + base_url[8:]
 
                 scheme, server, request_path, param, query, fragment = (
