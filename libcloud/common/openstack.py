@@ -17,6 +17,7 @@
 Common utilities for OpenStack
 """
 import httplib
+import os
 from urllib2 import urlparse
 from libcloud.common.base import ConnectionUserAndKey, Response
 from libcloud.compute.types import LibcloudError, InvalidCredsError, MalformedResponseError
@@ -255,6 +256,9 @@ class OpenStackBaseConnection(ConnectionUserAndKey):
                     base_url = self._force_base_url
                 else:
                     base_url = getattr(self, key)
+
+                if key == 'storage_url' and os.environ['RACKSPACE_SERVICENET']:
+                    base_url = 'https://snet-' + base_url[8:]
 
                 scheme, server, request_path, param, query, fragment = (
                     urlparse.urlparse(base_url))
